@@ -1,0 +1,5 @@
+{
+  "0651Cam3MAIN040126_2200~2238": { "target_class": [ "person" ], "cam_resolution": [ 1920, 1080 ], "fps": 12, "person_conf": 0.5, "min_time": 300, "max_time": 7200, "max_pat": 120, "polygon": [ [ [ 10, 133 ], [ 1524, 103 ], [ 1913, 1070 ], [ 28, 1071 ] ] ], "zoneTypesConfig": { "polygon": "#4caf50" } },
+  "1063Cam2MAIN040126_0809~0849": { "target_class": [ "person" ], "cam_resolution": [ 1280, 720 ], "fps": 15, "person_conf": 0.5, "min_time": 300, "max_time": 7200, "max_pat": 120, "polygon": [ [ [ 7, 89 ], [ 1016, 69 ], [ 1275, 713 ], [ 19, 714 ] ] ], "zoneTypesConfig": { "polygon": "#4caf50" } },
+  "camera 2_24h_170426":{"target_class":["person"],"cam_resolution":[1920,1080],"fps":12,"person_conf":0.5,"min_time":300,"max_time":7200,"max_pat":120,"polygon":[[[739,159],[821,163],[865,231],[1664,319],[1493,832],[1364,1076],[20,1076],[6,1070],[9,420]]],"zoneTypesConfig":{"polygon":"#4caf50"}}
+}

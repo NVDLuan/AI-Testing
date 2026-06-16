@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PL03 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer"
+    },
+    "rewaiting_count": {
+      "type": "integer"
+    },
+    "waiting_frame": {
+      "type": "integer"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+        }
+      }
+    },
+    "max_standing_time": {
+      "type": "integer"
+    },
+    "violent_count": {
+      "type": "integer"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "max_miss",
+    "rewaiting_count",
+    "waiting_frame",
+    "cam_resolution",
+    "cam_zones",
+    "max_standing_time",
+    "violent_count",
+    "target_class"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,164 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "HM05 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer",
+            "description": "Maximum number of frames a track can be missed before being removed",
+            "ui:section": "advanced"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "default": [
+                1920,
+                1080
+            ],
+            "description": "Camera resolution [width, height]",
+            "ui:section": "advanced"
+        },
+        "confidence_threshold": {
+            "type": "number",
+            "description": "Minimum confidence threshold for detections",
+            "ui:section": "advanced"
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "List of target class names to detect",
+          "ui:section": "advanced"
+        },
+        "no_walking_zones": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point [x, y] coordinates"
+                }
+            },
+            "description": "List of polygon zones where walking is not allowed",
+          "ui:section": "zone"
+        },
+        "fps": {
+            "type": "integer",
+            "default": 25,
+            "description": "Frame rate of the video stream",
+          "ui:section": "advanced"
+        },
+        "monitoring_duration_seconds": {
+            "type": "number",
+            "default": 7,
+            "description": "Duration in seconds to monitor after person enters no_walking_zone (T0)",
+          "ui:section": "advanced"
+        },
+        "pre_event_seconds": {
+            "type": "number",
+            "default": 3,
+            "description": "Seconds before T0 to include in event detections",
+          "ui:section": "advanced"
+        },
+        "mhe_iou_threshold": {
+            "type": "number",
+            "default": 0.1,
+            "description": "IOU threshold to count a frame as MHE intersecting (0.0-1.0)",
+          "ui:section": "advanced"
+        },
+        "mhe_intersect_percentage_threshold": {
+            "type": "number",
+            "default": 0.3,
+            "description": "If MHE intersection >= this % of frames, person is operating MHE, no violation",
+          "ui:section": "advanced"
+        },
+        "product_iou_threshold": {
+            "type": "number",
+            "default": 0.1,
+            "description": "IOU threshold to count a frame as product intersecting (0.0-1.0)",
+          "ui:section": "advanced"
+        },
+        "product_intersect_percentage_threshold": {
+            "type": "number",
+            "default": 0.3,
+            "description": "If product intersection >= this % of frames, person is handling product, no violation",
+          "ui:section": "advanced"
+        },
+        "cleaner_frame_threshold": {
+            "type": "number",
+            "default": 0.3,
+            "description": "cleaner_score threshold to count a frame as cleaner frame (0.0-1.0)",
+          "ui:section": "advanced"
+        },
+        "cleaner_percentage_threshold": {
+            "type": "number",
+            "default": 0.3,
+            "description": "If cleaner frames >= this % of total frames, person is a cleaner, no violation",
+          "ui:section": "advanced"
+        },
+        "distance_multiplier": {
+            "type": "number",
+            "default": 0.667,
+            "description": "Multiplier for avg bbox height to determine minimum distance traveled for violation (2/3 bbox height ≈ 1m)",
+          "ui:section": "advanced"
+        },
+        "proximity_multiplier": {
+            "type": "number",
+            "default": 1.5,
+            "description": "Multiplier for person bbox height to determine proximity distance to MHE/product. Scales with perspective.",
+          "ui:section": "advanced"
+        },
+        "confidence_score_alpha": {
+            "type": "number",
+            "default": 0.333,
+            "description": "Weight for mean detection confidence in final confidence score",
+          "ui:section": "advanced"
+        },
+        "confidence_score_beta": {
+            "type": "number",
+            "default": 0.333,
+            "description": "Weight for MHE score in final confidence score",
+          "ui:section": "advanced"
+        },
+        "confidence_score_gamma": {
+            "type": "number",
+            "default": 0.333,
+            "description": "Weight for product score in final confidence score",
+          "ui:section": "advanced"
+        }
+    },
+    "required": [
+        "max_miss",
+        "cam_resolution",
+        "confidence_threshold",
+        "target_class",
+        "no_walking_zones",
+        "fps",
+        "monitoring_duration_seconds",
+        "pre_event_seconds",
+        "mhe_iou_threshold",
+        "mhe_intersect_percentage_threshold",
+        "product_iou_threshold",
+        "product_intersect_percentage_threshold",
+        "cleaner_frame_threshold",
+        "cleaner_percentage_threshold",
+        "distance_multiplier",
+        "proximity_multiplier",
+        "confidence_score_alpha",
+        "confidence_score_beta",
+        "confidence_score_gamma"
+    ],
+    "additionalProperties": true
+}

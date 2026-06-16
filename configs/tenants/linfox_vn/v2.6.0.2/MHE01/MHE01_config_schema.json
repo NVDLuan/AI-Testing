@@ -1,0 +1,116 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MHE01 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum number of consecutive missed detections allowed before a track is considered lost. Must be a non-negative integer.",
+          "ui:section": "advanced"
+        },
+        "miss_time": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Time in seconds to consider a track as missed. Must be a non-negative integer.",
+          "ui:section": "advanced"
+        },
+        "max_standing_time": {
+          "type": "integer",
+          "ui:section": "advanced"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+          "ui:section": "advanced"
+        },
+        "cam_zones": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            },
+          "ui:section": "zone"
+        },
+        "violent_count": {
+          "type": "integer",
+          "ui:section": "advanced"
+        },
+        "image_points": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+            },
+            "description": "List of points in image coordinates. Each point is an array of integers [x, y].",
+          "ui:section": "advanced"
+        },
+        "real_points": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+            },
+            "description": "List of points in real-world coordinates. Each point is an array of integers [x, y].",
+          "ui:section": "advanced"
+        },
+        "min_distance": {
+          "type": "number",
+          "ui:section": "advanced"
+        },
+        "min_distance_MHE_vs_MHE": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Minimum distance in meters to consider a violation between MHEs. Must be a non-negative number.",
+          "ui:section": "advanced"
+        },
+        "min_distance_MHE_vs_person": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Minimum distance in meters to consider a violation between MHE and person. Must be a non-negative number.",
+          "ui:section": "advanced"
+        },
+
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        }
+    },
+    "required": [
+        "max_miss", "miss_time", "max_standing_time", "cam_resolution",
+        "violent_count", "image_points", "real_points", "min_distance",
+        "min_distance_MHE_vs_MHE", "min_distance_MHE_vs_person",
+        "target_class", "cam_zones"
+    ],
+    "additionalProperties": true
+}

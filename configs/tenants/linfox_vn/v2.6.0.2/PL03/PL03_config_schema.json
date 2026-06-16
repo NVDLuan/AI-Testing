@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PL03 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "rewaiting_count": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "waiting_frame": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+      "ui:section": "advanced"
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+        }
+      },
+      "ui:section": "zone"
+    },
+    "max_standing_time": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "violent_count": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:section": "advanced"
+    },
+    "report_interval": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3600,
+      "description": "Minimum seconds before re-reporting the same pallet after a violation (cooldown). Default: 3600s.",
+      "ui:section": "advanced"
+    },
+    "first_waiting_window_time": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 12,
+      "description": "Seconds before violation threshold where a track is considered 'near' and triggers batching wait. Default: max(10, violent_count/5).",
+      "ui:section": "advanced"
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "default": 25,
+      "description": "Frames per second of the camera stream, used to convert frame_id to seconds. Default: 25.",
+      "ui:section": "advanced"
+    },
+    "max_batch_wait": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 90,
+      "description": "Maximum seconds to wait when batching violations before forcing a report. Default: 90s.",
+      "ui:section": "advanced"
+    },
+    "near_grace": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 15,
+      "description": "Extra seconds to wait after the last near-violation track disappears before reporting. Default: 15s.",
+      "ui:section": "advanced"
+    },
+    "post_ready_hold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20,
+      "description": "One-shot hold (seconds) after the first ready track is detected, to let near-tracks join the batch. Set once, never extended. Default: 20s.",
+      "ui:section": "advanced"
+    },
+    "min_emit_gap": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 120,
+      "description": "Minimum seconds between two consecutive batch reports for this camera. Also enforced when max_batch_wait forces a report. Default: 120s.",
+      "ui:section": "advanced"
+    },
+    "dup_guard": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 180,
+      "description": "Seconds during which an identical pallet set signature is suppressed from re-firing. Default: 180s.",
+      "ui:section": "advanced"
+    },
+    "evidence_window": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 90,
+      "description": "Seconds of detection history to sample when building evidence for a report. Default: 90s.",
+      "ui:section": "advanced"
+    },
+    "max_track_gap": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 15,
+      "description": "Seconds a track can be lost before its floor timer is reset. Default: 15s.",
+      "ui:section": "advanced"
+    },
+    "moving_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.1,
+      "description": "IoU delta threshold between first and last detection to consider a track as moving. Default: 0.1.",
+      "ui:section": "advanced"
+    },
+    "same_pallet_iou": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.95,
+      "description": "IoU threshold above which two candidate tracks are considered the same physical pallet (deduplication). Default: 0.95.",
+      "ui:section": "advanced"
+    },
+    "side_face_extra": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20,
+      "description": "Extra violation time (seconds) added for slender bounding boxes (side-face pallets). Default: 20s.",
+      "ui:section": "advanced"
+    },
+    "region_centroid_dist": {
+      "type": "number",
+      "minimum": 0,
+      "default": 100,
+      "description": "Pixel distance threshold for region-based cooldown. A new violation whose bbox centroid is within this distance of a recently-reported region is suppressed, regardless of track ID. Prevents re-firing caused by tracker ID churn on the same physical pallet. Default: 100px.",
+      "ui:section": "advanced"
+    }
+  },
+  "required": [
+    "max_miss",
+    "rewaiting_count",
+    "waiting_frame",
+    "cam_resolution",
+    "cam_zones",
+    "max_standing_time",
+    "violent_count",
+    "target_class"
+  ],
+  "additionalProperties": true
+}

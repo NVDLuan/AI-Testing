@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PL03 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer"
+    },
+    "rewaiting_count": {
+      "type": "integer"
+    },
+    "waiting_frame": {
+      "type": "integer"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+        }
+      }
+    },
+    "max_standing_time": {
+      "type": "integer"
+    },
+    "violent_count": {
+      "type": "integer"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "report_interval": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3600,
+      "description": "Minimum seconds before re-reporting the same pallet after a violation (cooldown). Default: 3600s."
+    },
+    "first_waiting_window_time": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 12,
+      "description": "Seconds before violation threshold where a track is considered 'near' and triggers batching wait. Default: max(10, violent_count/5)."
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "default": 25,
+      "description": "Frames per second of the camera stream, used to convert frame_id to seconds. Default: 25."
+    },
+    "max_batch_wait": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 90,
+      "description": "Maximum seconds to wait when batching violations before forcing a report. Default: 90s."
+    },
+    "near_grace": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 10,
+      "description": "Extra seconds to wait after the last near-violation track disappears before reporting. Default: 10s."
+    },
+    "post_ready_hold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 10,
+      "description": "One-shot hold (seconds) after the first ready track is detected, to let near-tracks join the batch. Default: 10s."
+    },
+    "min_emit_gap": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 60,
+      "description": "Minimum seconds between two consecutive batch reports for this camera. Default: 60s."
+    },
+    "dup_guard": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 180,
+      "description": "Seconds during which an identical pallet set signature is suppressed from re-firing. Default: 180s."
+    },
+    "evidence_window": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 90,
+      "description": "Seconds of detection history to sample when building evidence for a report. Default: 90s."
+    },
+    "max_track_gap": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 15,
+      "description": "Seconds a track can be lost before its floor timer is reset. Default: 15s."
+    },
+    "moving_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.1,
+      "description": "IoU delta threshold between first and last detection to consider a track as moving. Default: 0.1."
+    },
+    "same_pallet_iou": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.95,
+      "description": "IoU threshold above which two candidate tracks are considered the same physical pallet (deduplication). Default: 0.95."
+    },
+    "side_face_extra": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20,
+      "description": "Extra violation time (seconds) added for slender bounding boxes (side-face pallets). Default: 20s."
+    }
+  },
+  "required": [
+    "max_miss",
+    "rewaiting_count",
+    "waiting_frame",
+    "cam_resolution",
+    "cam_zones",
+    "max_standing_time",
+    "violent_count",
+    "target_class"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,139 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MHE10 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "cam_zones": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            },
+          "ui:section": "zone"
+        },
+        "degrees_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "bbox_confidence": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "min_length_bboxes": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "min_height_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "min_width_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "max_height_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "max_width_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+          "ui:section": "advanced"
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        },
+        "prd_move_threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "base_y_distance": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "increased_y_distance": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "MHE_target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        },
+        "product_target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        },
+        "event_confidence_alpha": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "event_confidence_beta": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "event_confidence_gamma": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "event_confidence_delta": {
+            "type": "number",
+          "ui:section": "advanced"
+        }
+    },
+    "required": [
+        "max_miss",
+        "degrees_threshold",
+        "bbox_confidence",
+        "min_length_bboxes",
+        "min_height_threshold",
+        "min_width_threshold",
+        "max_height_threshold",
+        "max_width_threshold",
+        "cam_resolution",
+        "target_class",
+        "prd_move_threshold",
+        "base_y_distance",
+        "increased_y_distance",
+        "MHE_target_class",
+        "product_target_class",
+        "event_confidence_alpha",
+        "event_confidence_beta",
+        "event_confidence_gamma",
+        "event_confidence_delta",
+        "cam_zones"
+    ],
+    "additionalProperties": true
+}

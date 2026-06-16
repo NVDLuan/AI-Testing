@@ -1,0 +1,32 @@
+tenants:
+  - name: "linfox Viet Nam"
+    jobs:
+      - name: 'SMOKE'
+        sheet_id: '1XkgvcHE-VovO2NTQM8z3myS_RkTJlQl-IPAP_UyR3fA'
+      - name: 'REGRESSION'
+        sheet_id: '1WlrPDEYvon4uJIlxdaeRRNMzVsRGkpccR2RlZa_-ovs'
+        dir: '01. LFVN'
+    config: 'v2.6.0.2'
+    version: '2.6.0.2'
+    dir: 'LFVN_V2'
+    load_dir: 'linfox_vn'
+
+  - name: "EWS USA"
+    jobs:
+      - name: 'SMOKE'
+        sheet_id: '13HEoefW0cAZf9tKpBIT-M9YDNDT6BMTmVFXh29Dorls'
+      - name: 'SMOKE_2'
+        sheet_id: '1eyW75R-pR4w_sQvZ4MvcCT1qOs5nA4hBS8NpDcWG0rY'
+    config: 'v3.3.0.0-27_5_2026'
+    version: '3.3.0.0'
+    dir: '05. EWS USA'
+    load_dir: 'ews_usa'
+
+  - name: "BV C"
+    jobs:
+      - name: "SMOKE"
+        sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
+    config: 'v2.0.0'
+    version: '2.0.0'
+    load_dir: 'bv_c'
+    dir: "bv_c"

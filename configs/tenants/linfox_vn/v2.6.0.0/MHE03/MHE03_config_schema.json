@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MHE03 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer"
+        },
+        "warning_interval": {
+            "type": "integer"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "intersection": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            }
+        },
+        "min_detection": {
+            "type": "integer"
+        },
+        "event_confidence_alpha": {
+            "type": "number"
+        },
+        "event_confidence_beta": {
+            "type": "number"
+        },
+        "event_confidence_gamma": {
+            "type": "number"
+        },
+        "medium_speed": {
+            "type": "number"
+        }
+    },
+    "required": [
+        "max_miss",
+        "warning_interval",
+        "cam_resolution",
+        "target_class",
+        "intersection",
+        "min_detection",
+        "event_confidence_alpha",
+        "event_confidence_beta",
+        "event_confidence_gamma",
+        "medium_speed"
+    ],
+    "additionalProperties": true
+}

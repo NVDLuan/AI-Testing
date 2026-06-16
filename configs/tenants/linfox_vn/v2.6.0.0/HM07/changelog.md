@@ -1,0 +1,3 @@
+2026-03-28: HM07 - reduce median_conf_threshold from 0.75 to 0.66 for all cameras; clear cam_zones for linfox_DCBD-192_168_253_91
+2026-01-19: Fix camerazone: convert negative value to positive for "linfox_DCBD-192_168_253_80", "linfox_DCBD-192_168_253_53", "linfox_DCBD-192_168_253_49"
+2025-11-04: Update camerazone to ignore employees are inside the safe bench or inside the charging room and parking area for: linfox_DCBD-192_168_253_124, linfox_DCBD-192_168_253_80, linfox_DCBD-192_168_253_53, linfox_DCBD-192_168_253_75, linfox_DCBD-192_168_253_49, linfox_DCBD-192_168_253_21, linfox_DCBD-192_168_253_91, linfox_DCBD-192_168_253_166, linfox_DCBD-192_168_253_79, linfox_DCBD-192_168_253_48, linfox_DCBD-192_168_253_63.

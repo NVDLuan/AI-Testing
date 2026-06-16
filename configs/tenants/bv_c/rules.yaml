@@ -1,0 +1,8 @@
+rules:
+  - name: 'Hygiene'
+    code: ''
+    sheet: 'HandWashing'
+    type: 'SHORT'
+    time_sleep: 7
+    batch_debug: 'Linfox_Viet_Nam_USEPHONE_20260210_160428'
+

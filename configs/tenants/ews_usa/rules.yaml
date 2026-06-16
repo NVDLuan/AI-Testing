@@ -1,0 +1,36 @@
+rules:
+  - name: '1. RedZone'
+    code: 'HM12'
+    sheet: '1. RedZone'
+    type: 'SHORT'
+    time_sleep: 110
+    batch_debug: 'EWS_USA_1._RedZone_20260527_082735'
+
+  - name: '2. MissPPE'
+    code: 'PPE04'
+    sheet: '2. MissPPE'
+    type: 'SHORT'
+    time_sleep: 60
+    batch_debug: 'EWS_USA_2._MissPPE_20260527_082735'
+
+  - name: '3. Maintenance'
+    code: 'HM23'
+    sheet: '3. Maintenance'
+    type: 'SHORT'
+    time_sleep: 180
+    batch_debug: 'EWS_USA_3._Maintenance_20260527_082735'
+
+  - name: '4. InvalidMeeting'
+    code: 'HM11'
+    sheet: '4. InvalidMeeting'
+    type: 'SHORT'
+    time_sleep: 60
+    batch_debug: 'EWS_USA_4._InvalidMeeting_20260527_082735'
+
+  - name: '5. ValidMeeting'
+    code: 'HM24'
+    sheet: '5. ValidMeeting'
+    type: 'SHORT'
+    time_sleep: 90
+    batch_debug: 'EWS_USA_5._ValidMeeting_20260527_082735'
+

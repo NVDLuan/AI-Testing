@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "HM07 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer"
+        },
+        "median_conf_threshold": {
+            "type": "number"
+        },
+        "mean_conf_threshold": {
+            "type": "number"
+        },
+        "limit_time": {
+            "type": "integer"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "cam_zones": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            }
+        }
+    },
+    "required": [
+        "max_miss",
+        "median_conf_threshold",
+        "mean_conf_threshold",
+        "limit_time",
+        "cam_resolution",
+        "target_class",
+        "cam_zones"   
+     ],
+    "additionalProperties": true
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OTH02 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer"
+    },
+    "n_frame_stop": {
+      "type": "integer"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+        }
+      }
+    },
+    "alcohol_test_area": {
+      "type": "object",
+      "properties": {
+        "start_line": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+          }
+        },
+        "end_line": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "alcohol_iou_threshold": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "max_miss",
+    "n_frame_stop",
+    "cam_resolution",
+    "cam_zones",
+    "alcohol_test_area",
+    "alcohol_iou_threshold"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,4 @@
+{
+  "1063Cam2VALID231225_2159~2202":{"min_time":120,"confirm_meet":12,"target_class":["person"],"cam_resolution":[1280,720],"fps":12,"person_conf":0.5,"max_time":0,"max_pat":9,"hours_zone":12,"polygon":[[[508,710],[1166,708],[1179,1080],[517,1080]]],"zoneTypesConfig":{"polygon":"#4caf50"},"zone_buffer":5,"zone_confirm_frames":2,"early_leave_confirm":1,"pre_condition_tolerance":5,"is_normalized":false},
+  "camera 4_24h_180426": {"target_class":["person"],"cam_resolution":[1920,1080],"fps":12,"person_conf":0.3,"min_time":120,"max_time":0,"max_pat":9,"confirm_meet":12,"hours_zone":12,"polygon":[[[713,391],[1634,322],[1911,570],[1913,1047],[1904,1075],[797,1073]]],"zoneTypesConfig":{"polygon":"#4caf50"},"zone_buffer":5,"zone_confirm_frames":2,"early_leave_confirm":1,"pre_condition_tolerance":5,"is_normalized":false}
+}

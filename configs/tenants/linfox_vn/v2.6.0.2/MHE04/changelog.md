@@ -1,0 +1,1 @@
+2025-10-29: Updated rule Move8Pallet (MHE04) configuration: increased max_pallet_number from 7 → 9 to align with business logic and improve accuracy by reducing false alarms.

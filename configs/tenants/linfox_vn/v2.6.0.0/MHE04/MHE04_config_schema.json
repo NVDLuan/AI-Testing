@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MHE04 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height]."
+    },
+    "max_pallet_number": {
+      "type": "integer"
+    },
+    "confidence_alpha": {
+      "type": "number"
+    },
+    "confidence_beta": {
+      "type": "number"
+    },
+    "confidence_gamma": {
+      "type": "number"
+    },
+    "confidence_delta": {
+      "type": "number"
+    },
+    "pallet_count_confidence_mu": {
+      "type": "number"
+    },
+    "pallet_count_confidence_sigma": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "max_miss",
+    "target_class",
+    "cam_resolution",
+    "max_pallet_number",
+    "confidence_alpha",
+    "confidence_beta",
+    "confidence_gamma",
+    "confidence_delta",
+    "pallet_count_confidence_mu",
+    "pallet_count_confidence_sigma"
+  ],
+  "additionalProperties": true
+}

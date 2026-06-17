@@ -63,8 +63,14 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
         self._batch_rule[batch_code] = rule
         return batch_code
 
-    def _fetch_violation_videos(self, batch_code: str) -> set[str]:
-        """Lấy tập norm-name video có event.violation == True."""
+    def _fetch_events(self, batch_code: str) -> tuple[set[str], set[str]]:
+        """Quét toàn bộ event của batch -> (triggered, violation).
+
+        triggered: norm-name video CÓ ít nhất 1 event (đã trigger).
+        violation: norm-name video có event.violation == True.
+        Video không có event nào trong cả hai tập = "No Trigger".
+        """
+        triggered: set[str] = set()
         positives: set[str] = set()
         skip = 0
         while True:
@@ -76,14 +82,17 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
             resp.raise_for_status()
             events = resp.json() or []
             for ev in events:
+                fname = (ev.get("video_metadata") or {}).get("filename", "")
+                if not fname:
+                    continue
+                name = norm_name(fname)
+                triggered.add(name)
                 if ev.get("violation"):
-                    fname = (ev.get("video_metadata") or {}).get("filename", "")
-                    if fname:
-                        positives.add(norm_name(fname))
+                    positives.add(name)
             if len(events) < 100:
                 break
             skip += 100
-        return positives
+        return triggered, positives
 
     def poll_results(self, job_id: str, videos: list[VideoRef]) -> dict[str, Prediction]:
         rule = self._batch_rule.get(job_id)
@@ -91,20 +100,23 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
         deadline = time.time() + self._timeout_sec
         start = time.time()
         prev: set[str] | None = None
+        triggered: set[str] = set()
         positives: set[str] = set()
 
         while time.time() < deadline:
-            positives = self._fetch_violation_videos(job_id)
+            triggered, positives = self._fetch_events(job_id)
             elapsed = time.time() - start
-            if elapsed >= min_wait and prev is not None and positives == prev:
+            # Ổn định theo tập đã-trigger (superset) — khi không còn event mới thì dừng.
+            if elapsed >= min_wait and prev is not None and triggered == prev:
                 break
-            prev = positives
+            prev = triggered
             time.sleep(self._poll_interval_sec)
 
         return {
             v.video_id: Prediction(
                 video_id=v.video_id,
                 has_violation=norm_name(v.name) in positives,
+                triggered=norm_name(v.name) in triggered,
                 raw={"batch_code": job_id},
             )
             for v in videos

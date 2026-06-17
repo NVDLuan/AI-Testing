@@ -16,12 +16,14 @@ from adapters import (
     LinfoxHttpClient,
     MockAnalysisClient,
     NoOpVideoStore,
+    PublicGoogleSheetGroundTruthSource,
     S3VideoStore,
 )
 from configs.schema import TenantConfig
 from interfaces.analysis_client import AnalysisClient
 from interfaces.ground_truth import GroundTruthSource
 from interfaces.video_store import VideoStore
+from validator.strategies import ValidationStrategy
 
 if TYPE_CHECKING:  # tránh circular import (pipeline -> runner -> tenants.factory)
     from pipeline.handlers import Handler
@@ -47,6 +49,14 @@ class RunOptions:
     s3_secret_key: str = ""
     s3_endpoint: str = ""
     sheet_columns: dict[str, str] = field(default_factory=dict)
+    # Evidence -> S3 -> report HTML
+    file_browser_url: str = ""
+    file_browser_user: str = ""
+    file_browser_password: str = ""
+    evidence_field: str = "evidence_path"
+    report_s3_bucket: str = ""        # mặc định tái dùng s3_bucket
+    report_s3_prefix: str = "reports/evidence"
+    s3_public_base: str = ""          # domain/CloudFront công khai (tuỳ chọn)
 
 
 class TenantFactory:
@@ -76,6 +86,8 @@ class TenantFactory:
                 credentials_file=opts.credentials,
                 columns=opts.sheet_columns or None,
             )
+        if opts.source == "gsheet_public":
+            return PublicGoogleSheetGroundTruthSource(columns=opts.sheet_columns or None)
         raise ValueError(f"source không hỗ trợ: {opts.source!r}")
 
     def create_video_store(self, tenant: TenantConfig, opts: RunOptions) -> VideoStore:
@@ -89,6 +101,51 @@ class TenantFactory:
             access_key=opts.s3_access_key,
             secret_key=opts.s3_secret_key,
             endpoint_url=opts.s3_endpoint,
+        )
+
+    def create_validation_strategy(
+        self, tenant: TenantConfig, opts: RunOptions
+    ) -> ValidationStrategy | None:
+        """Luật chấm điểm cho tenant. None = để validator tự chọn theo dữ liệu
+        (binary nếu nhãn boolean, 3-state nếu có expected_triggered).
+
+        Override khi cần cách chấm riêng (vd verify detection): trả về strategy cụ thể.
+        """
+        return None
+
+    def create_evidence_publisher(self, tenant: TenantConfig, opts: RunOptions):
+        """Dựng EvidencePublisher (file-browser fetch -> S3 public upload) cho report HTML.
+
+        Trả None khi: chạy mock/offline, hoặc chưa cấu hình file-browser/bucket -> report
+        HTML vẫn ra nhưng không có link evidence.
+        """
+        if opts.analysis == "mock":
+            return None
+        bucket = opts.report_s3_bucket or opts.s3_bucket
+        if not opts.file_browser_url or not bucket:
+            return None
+        from adapters.file_browser import FileBrowserFetcher
+        from adapters.s3_store import S3PublicUploader
+        from report.evidence import EvidencePublisher
+
+        fetcher = FileBrowserFetcher(
+            base_url=opts.file_browser_url,
+            user=opts.file_browser_user,
+            password=opts.file_browser_password,
+            timeout_sec=opts.timeout_sec,
+        )
+        uploader = S3PublicUploader(
+            bucket=bucket,
+            region=opts.s3_region,
+            access_key=opts.s3_access_key,
+            secret_key=opts.s3_secret_key,
+            endpoint_url=opts.s3_endpoint,
+            public_base=opts.s3_public_base,
+        )
+        return EvidencePublisher(
+            fetcher, uploader,
+            evidence_field=opts.evidence_field,
+            key_prefix=opts.report_s3_prefix,
         )
 
     def create_chain(self, tenant: TenantConfig, opts: RunOptions) -> "Handler":
@@ -126,17 +183,35 @@ class LinfoxVNFactory(TenantFactory):
     def create_ground_truth_source(
         self, tenant: TenantConfig, opts: RunOptions
     ) -> GroundTruthSource:
-        if opts.source == "gsheet" and not opts.sheet_columns:
+        if opts.source in ("gsheet", "gsheet_public") and not opts.sheet_columns:
             opts.sheet_columns = {
-                "video_url": "Video",
-                "expected": "Label",
-                "camera": "Camera",
+                "video_url": "Video Raw",     # tạm dùng, chưa có cột path video riêng
+                "video_name": "Video Name",
+                "expected": "Expected Status",  # "Approve" = có vi phạm
+                "camera": "Camera Code",
             }
         return super().create_ground_truth_source(tenant, opts)
 
 
 @register("bv_c")
 class BvCFactory(TenantFactory):
-    """BV C: dùng API hand-washing (/api/hand-washing/*)."""
+    """BV C: dùng API hand-washing (/api/hand-washing/*) + map cột sheet riêng.
+
+    Sheet thật có cột "Video Name" (kèm đuôi .mp4), "Video Raw" (URL S3 — tạm dùng
+    thay cho video_path, sẽ có cột riêng sau), "Expected Status" ("Trigger"/"No trigger")
+    và "camera_code" (khớp với camera_id gửi cho API trigger).
+    """
 
     http_client_cls = HandWashingHttpClient
+
+    def create_ground_truth_source(
+        self, tenant: TenantConfig, opts: RunOptions
+    ) -> GroundTruthSource:
+        if opts.source in ("gsheet", "gsheet_public") and not opts.sheet_columns:
+            opts.sheet_columns = {
+                "video_url": "Video Raw",        # tạm dùng, chưa có cột path video riêng
+                "video_name": "Video Name",
+                "trigger_status": "Expected Status",  # 3-state: No Trigger / Trigger (No Violation) / Trigger (Violation)
+                "camera": "camera_code",
+            }
+        return super().create_ground_truth_source(tenant, opts)

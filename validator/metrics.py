@@ -39,6 +39,17 @@ class ConfusionMatrix:
         self.tn += 1
         return "TN"
 
+    def bump(self, outcome: str) -> None:
+        """Cộng trực tiếp theo outcome đã tính sẵn (dùng cho ma trận gộp 3-state)."""
+        if outcome == "TP":
+            self.tp += 1
+        elif outcome == "FP":
+            self.fp += 1
+        elif outcome == "FN":
+            self.fn += 1
+        elif outcome == "TN":
+            self.tn += 1
+
     @property
     def total(self) -> int:
         return self.tp + self.fp + self.fn + self.tn

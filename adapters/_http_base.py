@@ -16,6 +16,14 @@ from interfaces.analysis_client import HealthStatus
 
 log = logging.getLogger("ai_testing.http")
 
+RESOURCE_USAGE_THRESHOLD_PERCENT = 80.0
+RESOURCE_USAGE_FIELDS = (
+    "cpu_usage_percentage",
+    "ram_usage_percentage",
+    "gpu_usage_percentage",
+    "disk_usage_percentage",
+)
+
 
 def norm_name(name: str) -> str:
     """Chuẩn hoá tên video để so khớp (bỏ path + đuôi mở rộng)."""
@@ -62,6 +70,13 @@ class BaseHttpClient:
                     detail["system"] = sys_status
                     if sys_status.get("deepstream_is_healthy") is False:
                         healthy = False
+                    for field_name in RESOURCE_USAGE_FIELDS:
+                        value = sys_status.get(field_name)
+                        if value is not None and value > RESOURCE_USAGE_THRESHOLD_PERCENT:
+                            healthy = False
+                            detail.setdefault("over_threshold", []).append(
+                                f"{field_name}={value}% > {RESOURCE_USAGE_THRESHOLD_PERCENT}%"
+                            )
                 else:
                     # Có key nhưng /api từ chối -> test thật sẽ fail, coi như không khoẻ.
                     detail["system_error"] = f"HTTP {r2.status_code}: {r2.text[:200]}"

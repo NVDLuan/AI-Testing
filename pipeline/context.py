@@ -9,7 +9,9 @@ from configs.schema import JobDef, RuleDef, TenantConfig
 from interfaces.analysis_client import AnalysisClient, HealthStatus
 from interfaces.ground_truth import GroundTruthSource
 from interfaces.video_store import VideoStore
+from report.evidence import EvidencePublisher
 from validator.models import GroundTruthRecord, Prediction, VideoRef
+from validator.strategies import ValidationStrategy
 from validator.validator import ValidationReport
 
 
@@ -26,6 +28,8 @@ class PipelineContext:
     report_formats: list[str] = field(default_factory=lambda: ["console"])
     report_dir: str = "reports"
     download_dir: str = "downloads"
+    strategy: ValidationStrategy | None = None  # None = validator tự chọn theo dữ liệu
+    evidence_publisher: EvidencePublisher | None = None  # None = không publish evidence
 
     # Tích luỹ qua các bước
     ground_truth: list[GroundTruthRecord] = field(default_factory=list)

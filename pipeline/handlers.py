@@ -58,14 +58,19 @@ class HealthCheckHandler(Handler):
         sys_info = status.detail.get("system", {})
         if sys_info:
             ctx.log.info(
-                "  health: deepstream=%s cpu=%.0f%% gpu=%.0f%% disk=%.0f%%",
+                "  health: deepstream=%s cpu=%.0f%% ram=%.0f%% gpu=%.0f%% disk=%.0f%%",
                 sys_info.get("deepstream_is_healthy"),
                 sys_info.get("cpu_usage_percentage", 0),
+                sys_info.get("ram_usage_percentage", 0),
                 sys_info.get("gpu_usage_percentage", 0),
                 sys_info.get("disk_usage_percentage", 0),
             )
         if not status.healthy:
-            ctx.abort("Health check thất bại")  # chi tiết nằm ở ctx.health (in trong report)
+            over = status.detail.get("over_threshold")
+            reason = "Health check thất bại"
+            if over:
+                reason = f"Health check thất bại: vượt ngưỡng {', '.join(over)}"
+            ctx.abort(reason)  # chi tiết đầy đủ nằm ở ctx.health (in trong report)
         else:
             ctx.log.info("  health: OK")
 
@@ -146,7 +151,7 @@ class ValidateHandler(Handler):
     """So khớp prediction với ground truth -> metrics."""
 
     def process(self, ctx: PipelineContext) -> None:
-        ctx.report = validate(ctx.ground_truth, ctx.predictions)
+        ctx.report = validate(ctx.ground_truth, ctx.predictions, ctx.strategy)
         ov = ctx.report.overall
         ctx.log.info(
             "  TP=%d FP=%d FN=%d TN=%d | Recall=%.3f FAR=%.3f",
@@ -154,8 +159,37 @@ class ValidateHandler(Handler):
         )
 
 
+class PublishEvidenceHandler(Handler):
+    """Đưa video evidence lên S3 rồi gắn link vào từng Comparison (cho report HTML).
+
+    Chỉ chạy khi: có `ctx.evidence_publisher` và report cần HTML. Bỏ qua êm nếu không
+    cấu hình (offline/mock) — report HTML vẫn ra, chỉ thiếu link.
+    """
+
+    def process(self, ctx: PipelineContext) -> None:
+        if "html" not in ctx.report_formats:
+            ctx.log.info("  bỏ qua publish evidence (không xuất HTML)")
+            return
+        if ctx.evidence_publisher is None:
+            ctx.log.info("  bỏ qua publish evidence (chưa cấu hình file-browser/S3)")
+            return
+        if ctx.report is None:
+            return
+        customer = ctx.tenant.load_dir or ctx.tenant.name
+        published = 0
+        for cmp in ctx.report.comparisons:
+            pred = ctx.predictions.get(cmp.video_id)
+            if pred is None or not pred.events:
+                continue
+            urls = ctx.evidence_publisher.publish(customer, cmp.video_id, pred.events)
+            if urls:
+                cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls}
+                published += len(urls)
+        ctx.log.info("  đã publish %d evidence lên S3", published)
+
+
 class ReportHandler(Handler):
-    """Xuất báo cáo (console/json/csv). Luôn chạy — kể cả khi pipeline bị dừng."""
+    """Xuất báo cáo (console/json/csv/html). Luôn chạy — kể cả khi pipeline bị dừng."""
 
     run_on_abort = True
 

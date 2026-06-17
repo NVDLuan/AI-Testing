@@ -6,6 +6,7 @@ from .handlers import (
     Handler,
     HealthCheckHandler,
     LoadGroundTruthHandler,
+    PublishEvidenceHandler,
     ReportHandler,
     TriggerAndWaitHandler,
     UpdateRuleConfigHandler,
@@ -29,6 +30,7 @@ def build_default_chain(include_health: bool = True) -> Handler:
         UpdateRuleConfigHandler(),   # /api/rule (generic API); hand-washing no-op
         TriggerAndWaitHandler(),
         ValidateHandler(),
+        PublishEvidenceHandler(),    # fetch evidence -> S3 -> gắn link (chỉ khi xuất HTML)
         ReportHandler(),
     ]
     for a, b in zip(steps, steps[1:]):

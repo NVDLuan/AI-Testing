@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from interfaces.evidence import EvidenceUploader
 from interfaces.video_store import VideoStore
@@ -57,7 +57,8 @@ def parse_s3_url(url: str, default_bucket: str = "", prefix: str = "") -> tuple[
         return bucket, key
     if url.startswith("http://") or url.startswith("https://"):
         p = urlparse(url)
-        host, key = p.netloc, p.path.lstrip("/")
+        # decode %20... -> key thật (object key S3/cache path không dùng percent-encoding)
+        host, key = p.netloc, unquote(p.path.lstrip("/"))
         if ".s3" in host and not host.startswith("s3."):
             return host.split(".s3")[0], key  # virtual-hosted
         bucket, _, rest = key.partition("/")  # path-style
@@ -81,8 +82,8 @@ def endpoint_for_url(url: str) -> tuple[str, str]:
 class NoOpVideoStore(VideoStore):
     """Không tải gì — dùng cho mock/offline."""
 
-    def download(self, video: VideoRef, dest_dir: str) -> str:
-        return ""
+    def fetch(self, video: VideoRef) -> tuple[bytes, str]:
+        return b"", ""
 
 
 class S3VideoStore(VideoStore):
@@ -103,6 +104,7 @@ class S3VideoStore(VideoStore):
         access_key: str = "",
         secret_key: str = "",
         endpoint_url: str = "",
+        cache_dir: str = "",
     ) -> None:
         self._bucket = bucket
         self._prefix = prefix
@@ -110,7 +112,9 @@ class S3VideoStore(VideoStore):
         self._access_key = access_key
         self._secret_key = secret_key
         self._endpoint_url = endpoint_url
-        self._clients: dict[tuple[str, str], object] = {}  # cache theo (endpoint, style)
+        # cache_dir rỗng = chế độ RAM (không ghi đĩa). Có giá trị = lưu đĩa + tái dùng.
+        self._cache_dir = cache_dir
+        self._clients: dict = {}  # cache client boto3 theo (endpoint, style)
 
     def _client(self, endpoint: str, style: str):
         cache_key = (endpoint, style)
@@ -121,57 +125,72 @@ class S3VideoStore(VideoStore):
         return self._clients[cache_key]
 
     @staticmethod
-    def _http_download(url: str, local: str) -> bool:
-        """Tải public qua HTTP. True nếu xong; False nếu 401/403/404 (để fallback S3)."""
+    def _http_fetch(url: str) -> bytes | None:
+        """Lấy nội dung qua HTTP public. Trả bytes; None nếu 401/403/404 (để fallback S3)."""
         import requests  # noqa: WPS433
 
         try:
-            with requests.get(url, stream=True, timeout=120) as r:
-                if r.status_code in (401, 403, 404):
-                    log.info("HTTP public %s -> %s, chuyển sang S3 API", r.status_code, url)
-                    return False
-                r.raise_for_status()
-                with open(local, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=1 << 20):  # 1MB
-                        if chunk:
-                            f.write(chunk)
-            return True
+            r = requests.get(url, timeout=120)
+            if r.status_code in (401, 403, 404):
+                log.info("HTTP public %s -> %s, chuyển sang S3 API", r.status_code, url)
+                return None
+            r.raise_for_status()
+            return r.content
         except requests.RequestException as exc:
             log.warning("HTTP tải lỗi (%s), thử S3 API: %s", exc, url)
-            return False
+            return None
 
-    def download(self, video: VideoRef, dest_dir: str) -> str:
-        url = video.url
-        bucket, key = parse_s3_url(url, self._bucket, self._prefix)
-        if not bucket or not key:
-            raise ValueError(f"Không phân giải được S3 từ url: {url!r}")
-        os.makedirs(dest_dir, exist_ok=True)
-        local = os.path.join(dest_dir, os.path.basename(key) or f"{video.name or video.video_id}.mp4")
-
+    def _download_bytes(self, url: str, bucket: str, key: str) -> bytes:
+        """Tải nội dung video vào RAM: HTTP public trước, fallback S3 API theo host."""
         is_http = url.startswith("http://") or url.startswith("https://")
         if is_http:
-            log.info("HTTP download %s -> %s", url, local)
-            if self._http_download(url, local):
-                return local
+            log.info("HTTP fetch %s", url)
+            data = self._http_fetch(url)
+            if data is not None:
+                return data
             endpoint, style = endpoint_for_url(url)  # bucket riêng tư -> S3 API theo host URL
         else:
             endpoint = self._endpoint_url
             style = "path" if (endpoint and "amazonaws.com" not in endpoint) else ""
 
-        log.info("S3 API download s3://%s/%s (endpoint=%s) -> %s",
-                 bucket, key, endpoint or "AWS", local)
-        self._client(endpoint, style).download_file(bucket, key, local)
-        return local
+        import io  # noqa: WPS433
+
+        log.info("S3 API fetch s3://%s/%s (endpoint=%s)", bucket, key, endpoint or "AWS")
+        buf = io.BytesIO()
+        self._client(endpoint, style).download_fileobj(bucket, key, buf)
+        return buf.getvalue()
+
+    def fetch(self, video: VideoRef) -> tuple[bytes, str]:
+        url = video.url
+        bucket, key = parse_s3_url(url, self._bucket, self._prefix)
+        if not bucket or not key:
+            raise ValueError(f"Không phân giải được S3 từ url: {url!r}")
+        filename = os.path.basename(key) or f"{video.name or video.video_id}.mp4"
+
+        # Chế độ lưu đĩa: dùng lại file đã tải nếu còn -> khỏi tải lại.
+        cache_path = os.path.join(self._cache_dir, bucket, key) if self._cache_dir else ""
+        if cache_path and os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
+            log.info("cache hit (bỏ qua tải): %s", cache_path)
+            with open(cache_path, "rb") as f:
+                return f.read(), filename
+
+        data = self._download_bytes(url, bucket, key)
+
+        if cache_path:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "wb") as f:
+                f.write(data)
+            log.info("đã lưu cache: %s", cache_path)
+        return data, filename
 
 
 class S3PublicUploader(EvidenceUploader):
     """Đẩy video evidence lên S3 (public-read) để nhúng link vào report HTML.
 
-    URL công khai dựng theo:
-        - có `public_base`         -> f"{public_base}/{key}"  (CloudFront/domain riêng)
-        - có `endpoint_url` (MinIO)-> f"{endpoint}/{bucket}/{key}"
-        - còn lại (AWS S3)         -> f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
-    Bucket phải cho phép object public-read (ACL/bucket policy). Client tạo lười.
+    Uỷ quyền cho `S3StorageConnector` (adapters/storage) — phần upload đã kiểm thử:
+    idempotent (bỏ qua nếu object đã tồn tại) + dựng URL công khai theo public_base /
+    endpoint (MinIO) / pattern AWS. Bucket phải cho phép object public-read. Connector
+    tạo + connect() lười ở lần upload đầu.
     """
 
     def __init__(
@@ -189,29 +208,33 @@ class S3PublicUploader(EvidenceUploader):
         self._access_key = access_key
         self._secret_key = secret_key
         self._endpoint_url = endpoint_url
-        self._public_base = public_base.rstrip("/")
+        self._public_base = public_base
         self._acl = acl
-        self._s3 = None
+        self._conn = None
 
-    def _client(self):
-        if self._s3 is None:
+    def _connector(self):
+        if self._conn is None:
             if not self._bucket:
                 raise ValueError("S3PublicUploader cần bucket")
-            self._s3 = make_s3_client(
-                self._region, self._access_key, self._secret_key, self._endpoint_url
+            from adapters.storage.s3_storage import S3StorageConnector
+
+            conn = S3StorageConnector(
+                bucket=self._bucket,
+                region=self._region,
+                access_key=self._access_key,
+                secret_key=self._secret_key,
+                endpoint_url=self._endpoint_url,
+                public_base=self._public_base,
             )
-        return self._s3
+            if not conn.connect():
+                raise RuntimeError(f"Không kết nối được S3 bucket {self._bucket!r}")
+            self._conn = conn
+        return self._conn
 
-    def _public_url(self, key: str) -> str:
-        if self._public_base:
-            return f"{self._public_base}/{key}"
-        if self._endpoint_url:
-            return f"{self._endpoint_url.rstrip('/')}/{self._bucket}/{key}"
-        region = self._region or "ap-southeast-1"
-        return f"https://{self._bucket}.s3.{region}.amazonaws.com/{key}"
-
-    def upload(self, local_path: str, key: str) -> str:
-        extra = {"ACL": self._acl, "ContentType": "video/mp4"}
+    def upload(self, local_path: str, key: str, prefix: str = 'qc-automation') -> str:
         log.info("S3 upload %s -> s3://%s/%s", local_path, self._bucket, key)
-        self._client().upload_file(local_path, self._bucket, key, ExtraArgs=extra)
-        return self._public_url(key)
+        # key đã gồm prefix đầy đủ (report_s3_prefix) -> connector không thêm prefix nữa.
+        url = self._connector().upload_video_from_path(local_path, f'{prefix}/{key}')
+        if not url:
+            raise RuntimeError(f"Upload S3 thất bại: {key}")
+        return url

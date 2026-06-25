@@ -53,15 +53,24 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--s3-access-key", default="", help="hoặc env AWS_ACCESS_KEY_ID")
     p.add_argument("--s3-secret-key", default="", help="hoặc env AWS_SECRET_ACCESS_KEY")
     p.add_argument("--s3-endpoint", default="", help="endpoint S3 tuỳ chọn (MinIO...)")
+    p.add_argument("--cache-dir", default="",
+                   help="Lưu video tải về vào thư mục này + tái dùng (bỏ trống = giữ RAM, không ghi đĩa)")
+    p.add_argument("--recordings-dir", default="video_raw/rainscales-static-assets/qc-automation/06. AutoHygiene",
+                   help="Thư mục chứa file keypoints .txt kèm video (bv_c upload cần)")
+    p.add_argument("--hw-strategy", choices=["v1", "v2", "v3", "v4", "v5"], default="v5",
+                   help="Luật chấm bv_c: v1 (trigger+violation) | v2 (+Step Sequence) | "
+                        "v3 (+count từng bước) | v4 (cả 3) | v5 (như v4 nhưng bỏ violation)")
 
-    p.add_argument("--formats", nargs="+", default=["console"], help="console json csv html")
+    p.add_argument("--formats", nargs="+", default=["console"],
+                   help="console json csv html template "
+                        "(json/template đều ra file test_results_*.json theo mẫu QC)")
     p.add_argument("--report-dir", default="reports")
 
     # Evidence video -> S3 -> link trong report HTML
     p.add_argument("--file-browser-url", default="", help="Gốc API File Browser tải evidence")
     p.add_argument("--file-browser-user", default="", help="Username File Browser (hoặc env FILE_BROWSER_USER)")
     p.add_argument("--file-browser-password", default="", help="Password File Browser (hoặc env FILE_BROWSER_PASSWORD)")
-    p.add_argument("--evidence-field", default="evidence_path", help="Tên field trong event chứa file_path evidence")
+    p.add_argument("--evidence-field", default="evidence", help="Tên field trong event chứa file_path evidence")
     p.add_argument("--report-s3-bucket", default="", help="Bucket lưu evidence (mặc định dùng --s3-bucket)")
     p.add_argument("--report-s3-prefix", default="reports/evidence", help="Prefix key evidence trên S3")
     p.add_argument("--s3-public-base", default="", help="Domain/CloudFront công khai để dựng URL")
@@ -129,19 +138,24 @@ def main(argv: list[str] | None = None) -> int:
         poll_interval_sec=args.poll_interval,
         timeout_sec=args.timeout,
         skip_health=args.skip_health,
-        s3_bucket=args.s3_bucket,
+        s3_bucket=args.s3_bucket or os.environ.get("S3_BUCKET", ""),
         s3_region=args.s3_region or os.environ.get("AWS_DEFAULT_REGION", ""),
         s3_prefix=args.s3_prefix,
         s3_access_key=args.s3_access_key or os.environ.get("AWS_ACCESS_KEY_ID", ""),
         s3_secret_key=args.s3_secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
         s3_endpoint=args.s3_endpoint or os.environ.get("S3_ENDPOINT", ""),
+        cache_dir=args.cache_dir or os.environ.get("CACHE_DIR", "video_raw"),
+        recordings_dir=args.recordings_dir,
+        hw_strategy=args.hw_strategy,
         file_browser_url=args.file_browser_url or os.environ.get("FILE_BROWSER_URL", ""),
         file_browser_user=args.file_browser_user or os.environ.get("FILE_BROWSER_USER", ""),
         file_browser_password=args.file_browser_password or os.environ.get("FILE_BROWSER_PASSWORD", ""),
         evidence_field=args.evidence_field,
-        report_s3_bucket=args.report_s3_bucket,
-        report_s3_prefix=args.report_s3_prefix,
+        report_s3_bucket=args.report_s3_bucket,  # rỗng -> factory fallback dùng chung s3_bucket
+        report_s3_prefix="reports",
         s3_public_base=args.s3_public_base or os.environ.get("S3_PUBLIC_BASE", ""),
+        waiting_time=os.environ.get("TIME_WAITING", ""),
+        kafka_watcher_api_url=os.environ.get("KAFKA_WATCHER_API_URL", ""),
     )
 
     ctx = run_job(loader, tenant, job, rules, opts, args.formats, args.report_dir)

@@ -9,8 +9,9 @@ Thêm/bớt/đổi thứ tự bước = sửa danh sách trong chain.build_defau
 """
 from __future__ import annotations
 
-import os
+import time
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from validator.models import VideoRef
 from validator.validator import validate
@@ -101,7 +102,7 @@ class CheckMissingHandler(Handler):
 
 
 class UploadHandler(Handler):
-    """Tải video thiếu từ kho nguồn (S3) rồi upload lên hệ thống bên thứ 3."""
+    """Lấy video thiếu từ kho nguồn (S3) vào RAM rồi upload thẳng lên hệ thống bên thứ 3."""
 
     def process(self, ctx: PipelineContext) -> None:
         if not ctx.missing:
@@ -109,11 +110,8 @@ class UploadHandler(Handler):
             return
         ok = 0
         for v in ctx.missing:
-            local = ctx.video_store.download(v, ctx.download_dir)
-            ctx.client.upload(v, local or None)
-            # Dọn file đã tải để khỏi đầy đĩa.
-            if local and os.path.exists(local):
-                os.remove(local)
+            content, filename = ctx.video_store.fetch(v)
+            ctx.client.upload(v, content or None, filename)
             ok += 1
         ctx.log.info("  đã tải+upload %d/%d video", ok, len(ctx.missing))
 
@@ -134,14 +132,36 @@ class UpdateRuleConfigHandler(Handler):
 class TriggerAndWaitHandler(Handler):
     """Trigger phân tích theo từng rule rồi chờ kết quả (gộp để giữ ngữ cảnh rule)."""
 
+    @staticmethod
+    def make_batch_code(customer: str, rule_code: str) -> str:
+        return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
         for code, videos in ctx.videos_by_rule.items():
             if not videos:
                 continue
             rule = rule_by_code[code]
-            job_id = ctx.client.trigger(videos, rule)
+            batch_code = self.make_batch_code(ctx.tenant.name, rule.code)
+            job_id = ctx.client.trigger(videos, rule, batch_code)
+            ctx.batch_codes[code] = job_id
             ctx.log.info("  rule=%s: trigger job=%s", rule.name, job_id)
+
+
+class WaitHandler(Handler):
+
+    def process(self, ctx: PipelineContext) -> None:
+        ctx.log.info("Waiting")
+        ctx.waiting.wait()
+
+
+class GetResultsHandler(Handler):
+
+    def process(self, ctx: PipelineContext) -> None:
+        rule_by_code = {r.code: r for r in ctx.rules}
+        for code, videos in ctx.videos_by_rule.items():
+            rule = rule_by_code[code]
+            job_id = ctx.batch_codes.get(code, "")
             preds = ctx.client.poll_results(job_id, videos)
             ctx.predictions.update(preds)
             ctx.log.info("  rule=%s: nhận %d kết quả", rule.name, len(preds))
@@ -176,12 +196,17 @@ class PublishEvidenceHandler(Handler):
         if ctx.report is None:
             return
         customer = ctx.tenant.load_dir or ctx.tenant.name
+        rule_name_by_code = {r.code: r.name for r in ctx.rules}
         published = 0
         for cmp in ctx.report.comparisons:
             pred = ctx.predictions.get(cmp.video_id)
             if pred is None or not pred.events:
                 continue
-            urls = ctx.evidence_publisher.publish(customer, cmp.video_id, pred.events)
+            # video_id = "<rule_code>/<video_name>"; batch_code lấy từ job trigger của rule.
+            rule_code = cmp.video_id.split("/", 1)[0]
+            batch_code = ctx.batch_codes.get(rule_code, rule_code)
+            rule_name = rule_name_by_code.get(rule_code, rule_code)
+            urls = ctx.evidence_publisher.publish(customer, batch_code, rule_name, pred.events)
             if urls:
                 cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls}
                 published += len(urls)
@@ -197,13 +222,26 @@ class ReportHandler(Handler):
         # import cục bộ để tránh phụ thuộc vòng khi chỉ dùng pipeline ở nơi khác.
         from report.reporter import write_reports
 
+        aborted = ctx.aborted or ctx.report is None
+        # 'json' và 'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
+        # Khi abort thì không có kết quả -> 'json' rơi về *_ABORTED.json của write_reports.
+        emit_template = (not aborted) and (
+                "template" in ctx.report_formats or "json" in ctx.report_formats
+        )
+        emit_dashboard = emit_template and ("html" in ctx.report_formats)
+        passthrough = [f for f in ctx.report_formats if f != "template"]
+        if emit_template:
+            passthrough = [f for f in passthrough if f != "json"]
+        if emit_dashboard:
+            passthrough = [f for f in passthrough if f != "html"]
+
         title = f"{ctx.tenant.name} — job {ctx.job.name} (v{ctx.tenant.version})"
         written = write_reports(
             title=title,
             customer_id=ctx.tenant.load_dir or ctx.tenant.name,
             report=ctx.report,
             output_dir=ctx.report_dir,
-            formats=ctx.report_formats,
+            formats=passthrough,
             status="aborted" if ctx.aborted else "ok",
             reason=ctx.abort_reason,
             health=ctx.health,
@@ -211,3 +249,24 @@ class ReportHandler(Handler):
         for fmt, path in written.items():
             if path:
                 ctx.log.info("  report[%s] -> %s", fmt, path)
+
+        if emit_template:
+            import os
+
+            from report.template import write_template
+
+            json_path = write_template(ctx, output_dir=ctx.report_dir)
+            ctx.log.info("  report[template] -> %s", json_path)
+
+            # Gen dashboard HTML từ file JSON vừa ghi (report/generate_report.py).
+            if emit_dashboard:
+                from report.generate_report import generate_report as _gen_dashboard
+
+                tpl = os.path.join(os.path.dirname(__file__), "..", "report", "dashboard_template.html")
+                tpl = os.path.abspath(tpl)
+                html_path = json_path[:-5] + ".html" if json_path.endswith(".json") else json_path + ".html"
+                try:
+                    if _gen_dashboard(json_path, html_path, tpl):
+                        ctx.log.info("  report[html] -> %s", html_path)
+                except Exception as exc:  # noqa: BLE001 — không để lỗi gen HTML làm hỏng run
+                    ctx.log.warning("  gen dashboard HTML lỗi: %s", exc)

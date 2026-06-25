@@ -50,9 +50,6 @@ class BaseHttpClient:
     def _url(self, path: str) -> str:
         return f"{self._base_url}/{path.lstrip('/')}"
 
-    def make_batch_code(self, rule_code: str) -> str:
-        return f"{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
     def health_check(self) -> HealthStatus:
         detail: dict = {}
         # 1. /health công khai

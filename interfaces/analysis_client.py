@@ -43,15 +43,16 @@ class AnalysisClient(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def upload(self, video: VideoRef, file_path: str | None = None) -> None:
+    def upload(self, video: VideoRef, content: bytes | None = None, filename: str = "") -> None:
         """Upload một video lên hệ thống bên thứ 3.
 
-        `file_path`: đường dẫn file local đã tải về (vd từ S3). Mock có thể bỏ qua.
+        `content`: nội dung video (bytes) lấy từ VideoStore.fetch — upload thẳng, không
+        qua đĩa. `filename`: tên file gửi kèm multipart. Mock có thể bỏ qua.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def trigger(self, videos: list[VideoRef], rule: RuleDef) -> str:
+    def trigger(self, videos: list[VideoRef], rule: RuleDef, batch_code: str) -> str:
         """Kích hoạt phân tích cho tập video. Trả về job_id/batch_code để theo dõi."""
         raise NotImplementedError
 

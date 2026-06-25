@@ -7,7 +7,7 @@ Quy ước nhãn dương (positive) = "có vi phạm".
     TN: GT không       & dự đoán không
 
     Recall (sensitivity) = TP / (TP + FN)
-    FAR (False Alarm Rate) = FP / (FP + TN)
+    FAR (False Alarm Rate) = FP / (TP + FP)
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class ConfusionMatrix:
 
     @property
     def far(self) -> float:
-        return _safe_div(self.fp, self.fp + self.tn)
+        return _safe_div(self.fp, self.tp + self.fp)
 
     @property
     def precision(self) -> float:

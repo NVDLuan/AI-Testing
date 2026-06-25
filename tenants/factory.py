@@ -6,6 +6,7 @@ Runner chỉ gọi `get_factory(tenant)` — không cần biết tenant nào đ�
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
@@ -19,6 +20,7 @@ from adapters import (
     PublicGoogleSheetGroundTruthSource,
     S3VideoStore,
 )
+from adapters.waiting import WaitingBase
 from configs.schema import TenantConfig
 from interfaces.analysis_client import AnalysisClient
 from interfaces.ground_truth import GroundTruthSource
@@ -28,11 +30,13 @@ from validator.strategies import ValidationStrategy
 if TYPE_CHECKING:  # tránh circular import (pipeline -> runner -> tenants.factory)
     from pipeline.handlers import Handler
 
+log = logging.getLogger("ai_testing.factory")
+
 
 @dataclass
 class RunOptions:
-    analysis: str = "mock"          # mock | http
-    source: str = "fake"            # fake | gsheet
+    analysis: str = "mock"  # mock | http
+    source: str = "fake"  # fake | gsheet
     api_url: str = ""
     api_key: str = ""
     credentials: str = ""
@@ -48,15 +52,20 @@ class RunOptions:
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_endpoint: str = ""
+    cache_dir: str = ""  # rỗng = giữ RAM; có giá trị = lưu video xuống đĩa + tái dùng
+    recordings_dir: str = ""
+    hw_strategy: str = "v2"  # bv_c: v1 (trigger+viol) | v2 (+sequence) | v3 (+count)
     sheet_columns: dict[str, str] = field(default_factory=dict)
     # Evidence -> S3 -> report HTML
     file_browser_url: str = ""
     file_browser_user: str = ""
     file_browser_password: str = ""
     evidence_field: str = "evidence_path"
-    report_s3_bucket: str = ""        # mặc định tái dùng s3_bucket
+    report_s3_bucket: str = ""  # mặc định tái dùng s3_bucket
     report_s3_prefix: str = "reports/evidence"
-    s3_public_base: str = ""          # domain/CloudFront công khai (tuỳ chọn)
+    s3_public_base: str = ""  # domain/CloudFront công khai (tuỳ chọn)
+    waiting_time: str = ""
+    kafka_watcher_api_url: str = ""
 
 
 class TenantFactory:
@@ -65,6 +74,10 @@ class TenantFactory:
     # Lớp HTTP client mặc định cho tenant (generic API). Subclass override nếu khác.
     http_client_cls = LinfoxHttpClient
 
+    def http_client_kwargs(self, opts: RunOptions) -> dict:
+        """Kwargs riêng cho HTTP client của tenant (mặc định không có). Override khi cần."""
+        return {}
+
     def create_client(self, tenant: TenantConfig, opts: RunOptions) -> AnalysisClient:
         if opts.analysis == "mock":
             return MockAnalysisClient(opts.far_rate, opts.miss_rate, opts.seed)
@@ -72,12 +85,13 @@ class TenantFactory:
             if not opts.api_url:
                 raise ValueError("analysis=http cần --api-url")
             return self.http_client_cls(
-                opts.api_url, opts.api_key, opts.poll_interval_sec, opts.timeout_sec
+                opts.api_url, opts.api_key, opts.poll_interval_sec, opts.timeout_sec,
+                **self.http_client_kwargs(opts),
             )
         raise ValueError(f"analysis không hỗ trợ: {opts.analysis!r}")
 
     def create_ground_truth_source(
-        self, tenant: TenantConfig, opts: RunOptions
+            self, tenant: TenantConfig, opts: RunOptions
     ) -> GroundTruthSource:
         if opts.source == "fake":
             return FakeSheetGroundTruthSource(seed=opts.seed)
@@ -101,10 +115,11 @@ class TenantFactory:
             access_key=opts.s3_access_key,
             secret_key=opts.s3_secret_key,
             endpoint_url=opts.s3_endpoint,
+            cache_dir=opts.cache_dir,
         )
 
     def create_validation_strategy(
-        self, tenant: TenantConfig, opts: RunOptions
+            self, tenant: TenantConfig, opts: RunOptions
     ) -> ValidationStrategy | None:
         """Luật chấm điểm cho tenant. None = để validator tự chọn theo dữ liệu
         (binary nếu nhãn boolean, 3-state nếu có expected_triggered).
@@ -123,6 +138,16 @@ class TenantFactory:
             return None
         bucket = opts.report_s3_bucket or opts.s3_bucket
         if not opts.file_browser_url or not bucket:
+            # Báo rõ thiếu gì NẾU người dùng đang định dùng evidence (đã set 1 trong 2).
+            if opts.file_browser_url or bucket:
+                missing = []
+                if not opts.file_browser_url:
+                    missing.append("--file-browser-url (hoặc env FILE_BROWSER_URL)")
+                if not bucket:
+                    missing.append("--s3-bucket / --report-s3-bucket")
+                log.warning(
+                    "Evidence sẽ KHÔNG publish được — thiếu: %s", ", ".join(missing)
+                )
             return None
         from adapters.file_browser import FileBrowserFetcher
         from adapters.s3_store import S3PublicUploader
@@ -153,6 +178,12 @@ class TenantFactory:
 
         return build_default_chain(include_health=not opts.skip_health)
 
+    def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
+        from adapters.waiting import WaitingTimeout
+        hour, mut, sec = opts.waiting_time.split(":")
+
+        return WaitingTimeout(seconds=int(sec), minutes=int(mut), hours=int(hour))
+
 
 # --- Registry override theo load_dir ---------------------------------------
 
@@ -181,16 +212,20 @@ class LinfoxVNFactory(TenantFactory):
     http_client_cls = LinfoxHttpClient
 
     def create_ground_truth_source(
-        self, tenant: TenantConfig, opts: RunOptions
+            self, tenant: TenantConfig, opts: RunOptions
     ) -> GroundTruthSource:
         if opts.source in ("gsheet", "gsheet_public") and not opts.sheet_columns:
             opts.sheet_columns = {
-                "video_url": "Video Raw",     # tạm dùng, chưa có cột path video riêng
+                "video_url": "Video Raw",  # tạm dùng, chưa có cột path video riêng
                 "video_name": "Video Name",
                 "expected": "Expected Status",  # "Approve" = có vi phạm
                 "camera": "Camera Code",
             }
         return super().create_ground_truth_source(tenant, opts)
+
+    def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
+        from adapters.waiting import WaitingKafka
+        return WaitingKafka(opts.kafka_watcher_api_url)
 
 
 @register("bv_c")
@@ -204,14 +239,80 @@ class BvCFactory(TenantFactory):
 
     http_client_cls = HandWashingHttpClient
 
+    def http_client_kwargs(self, opts: RunOptions) -> dict:
+        # Upload hand-washing cần kèm file keypoints .txt -> trỏ thư mục recordings.
+        return {"recordings_dir": opts.recordings_dir}
+
+    def create_validation_strategy(self, tenant: TenantConfig, opts: RunOptions):
+        # Chọn luật chấm bv_c theo --hw-strategy:
+        #   v1 = trigger+violation | v2 = +Step Sequence | v3 = +count từng bước.
+        from validator.hand_washing_strategy import (
+            HandWashingStrategy, HandWashingStrategyV2, HandWashingStrategyV3,
+            HandWashingStrategyV4, HandWashingStrategyV5,
+        )
+
+        variants = {
+            "v1": HandWashingStrategy, "v2": HandWashingStrategyV2,
+            "v3": HandWashingStrategyV3, "v4": HandWashingStrategyV4,
+            "v5": HandWashingStrategyV5,
+        }
+        cls = variants.get((opts.hw_strategy or "v2").lower(), HandWashingStrategyV2)
+        return cls()
+
     def create_ground_truth_source(
-        self, tenant: TenantConfig, opts: RunOptions
+            self, tenant: TenantConfig, opts: RunOptions
     ) -> GroundTruthSource:
         if opts.source in ("gsheet", "gsheet_public") and not opts.sheet_columns:
             opts.sheet_columns = {
-                "video_url": "Video Raw",        # tạm dùng, chưa có cột path video riêng
+                "video_url": "Video Raw",  # tạm dùng, chưa có cột path video riêng
                 "video_name": "Video Name",
-                "trigger_status": "Expected Status",  # 3-state: No Trigger / Trigger (No Violation) / Trigger (Violation)
+                "trigger_status": "Expected Status",
+                # 3-state: No Trigger / Trigger (No Violation) / Trigger (Violation)
                 "camera": "camera_code",
             }
         return super().create_ground_truth_source(tenant, opts)
+
+    def create_evidence_publisher(self, tenant: TenantConfig, opts: RunOptions):
+        """Dựng EvidencePublisher (file-browser fetch -> S3 public upload) cho report HTML.
+
+        Trả None khi: chạy mock/offline, hoặc chưa cấu hình file-browser/bucket -> report
+        HTML vẫn ra nhưng không có link evidence.
+        """
+        if opts.analysis == "mock":
+            return None
+        bucket = opts.report_s3_bucket or opts.s3_bucket
+        if not opts.file_browser_url or not bucket:
+            # Báo rõ thiếu gì NẾU người dùng đang định dùng evidence (đã set 1 trong 2).
+            if opts.file_browser_url or bucket:
+                missing = []
+                if not opts.file_browser_url:
+                    missing.append("--file-browser-url (hoặc env FILE_BROWSER_URL)")
+                if not bucket:
+                    missing.append("--s3-bucket / --report-s3-bucket")
+                log.warning(
+                    "Evidence sẽ KHÔNG publish được — thiếu: %s", ", ".join(missing)
+                )
+            return None
+        from adapters.file_browser import DownloadEvidenceHandWashingFetcher
+        from adapters.s3_store import S3PublicUploader
+        from report.evidence import EvidencePublisher
+
+        fetcher = DownloadEvidenceHandWashingFetcher(
+            base_url=opts.file_browser_url,
+            user=opts.file_browser_user,
+            password=opts.file_browser_password,
+            timeout_sec=opts.timeout_sec,
+        )
+        uploader = S3PublicUploader(
+            bucket=bucket,
+            region=opts.s3_region,
+            access_key=opts.s3_access_key,
+            secret_key=opts.s3_secret_key,
+            endpoint_url=opts.s3_endpoint,
+            public_base=opts.s3_public_base,
+        )
+        return EvidencePublisher(
+            fetcher, uploader,
+            evidence_field=opts.evidence_field,
+            key_prefix=opts.report_s3_prefix,
+        )

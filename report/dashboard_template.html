@@ -1,0 +1,3660 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Rule Automation Testing Dashboard</title>
+    <!-- Google Fonts: Plus Jakarta Sans for premium modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas library for client-side PNG export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        :root {
+            /* Layout & Backgrounds - Soft Sage & Muted Moss (Anti-Glare Sáng Dịu) */
+            --left-menu-bg: #223631;
+            /* Xanh rêu đá dịu cho menu trái */
+            --left-menu-text: #99AFAB;
+            /* Chữ mặc định trên menu */
+            --left-menu-active: #489574;
+            /* Màu nền active menu */
+            --left-menu-active-text: #A3E635;
+            /* Chữ/icon active: xanh mint sáng dịu */
+
+            --background: #F4F7F5;
+            /* Nền chính (Anti-glare background xám ánh xanh lục nhạt) */
+            --bg-color: #F4F7F5;
+            --surface: #FFFFFF;
+            /* Nền trắng cho Card chứa báo cáo */
+            --card-bg: #FFFFFF;
+            --border: #E1E8E5;
+            /* Đường viền mảnh giữa các component */
+            --card-border: #E1E8E5;
+
+            /* Typography */
+            --text-main: #1E2926;
+            /* Màu chữ chính (Charcoal pha xanh lục, độ tương phản vừa vặn) */
+            --text-muted: #60736F;
+            /* Màu chữ phụ, chú thích */
+            --text-sub: #60736F;
+            --text-dark: #829591;
+
+            /* Data-viz Semantics (Màu sắc biểu đồ đồng bộ với tông dịu) */
+            --color-pass: #3A9B78;
+            /* Xanh nhạt cho Pass Rate */
+            --color-passed: #3A9B78;
+            --color-passed-rgb: 58, 155, 120;
+
+            --color-fail: #D96B43;
+            /* Cam đất cho Fail rate (tránh đỏ tươi gắt) */
+            --color-failed: #D96B43;
+            --color-failed-rgb: 217, 107, 67;
+
+            --color-target: #526360;
+            /* Đường Target */
+
+            --color-primary: #223631;
+            /* Primary brand deep moss */
+            --color-primary-rgb: 34, 54, 49;
+            --color-secondary: #60736F;
+
+            --sidebar-width: 280px;
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-soft: 0 4px 16px rgba(34, 54, 49, 0.03);
+            --shadow-hover: 0 8px 24px rgba(34, 54, 49, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(58, 155, 120, 0.03) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(96, 115, 111, 0.03) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #E8EFEA;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(96, 115, 111, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(96, 115, 111, 0.5);
+        }
+
+        /* Utility classes */
+        .glass-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-soft);
+            transition: var(--transition-smooth);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(58, 155, 120, 0.35);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 2.2fr 1fr;
+            gap: 24px;
+            width: 100%;
+        }
+
+        @media (max-width: 1150px) {
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Layout Structure */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* Sidebar Navigation: Premium Anti-Glare Deep Moss Green Layout */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--left-menu-bg);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 50;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #FFFFFF;
+        }
+
+        .brand-logo i {
+            color: var(--left-menu-active-text);
+            text-shadow: 0 0 10px rgba(163, 230, 53, 0.3);
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            list-style: none;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .menu-header {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.3);
+            margin: 12px 0 6px 12px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 16px;
+            border-radius: 10px;
+            color: var(--left-menu-text);
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item:hover {
+            color: #FFFFFF;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .menu-item.active {
+            color: #FFFFFF;
+            background: rgba(72, 149, 116, 0.15);
+            /* Nền active xanh rêu dịu */
+            border-left: 3px solid var(--left-menu-active-text);
+            /* Marker xanh mint dịu */
+        }
+
+        .menu-item.active i {
+            color: var(--left-menu-active-text);
+        }
+
+        .menu-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .menu-badge.success {
+            background: rgba(58, 155, 120, 0.2);
+            color: #C5F4E4;
+        }
+
+        .menu-badge.danger {
+            background: rgba(217, 107, 67, 0.2);
+            color: #FFD4C5;
+        }
+
+        /* Main Content Workspace */
+        .main-workspace {
+            margin-left: var(--sidebar-width);
+            flex-grow: 1;
+            min-width: 0;
+            padding: 12px 24px;
+            /* Tinh gọn padding dọc để tránh cuộn trang */
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* Tinh gọn khoảng cách giữa các khối */
+        }
+
+        /* Header block */
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title-area h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--color-primary);
+            margin-bottom: 4px;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .meta-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface);
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-weight: 500;
+        }
+
+        .meta-tag i {
+            color: var(--left-menu-active);
+        }
+
+        /* Executive Summary KPI Panel */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .kpi-card {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .kpi-details h3 {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--text-main);
+        }
+
+        .kpi-icon {
+            font-size: 2.25rem;
+            opacity: 0.08;
+            position: absolute;
+            right: 20px;
+            bottom: 16px;
+            color: var(--text-main);
+        }
+
+        .kpi-card.passed {
+            border-left: 4px solid var(--color-pass);
+        }
+
+        .kpi-card.passed .kpi-icon {
+            color: var(--color-pass);
+            opacity: 0.12;
+        }
+
+        .kpi-card.passed .kpi-value {
+            color: #2E7D5F;
+        }
+
+        /* Đạt tương phản 4.5:1 */
+
+        .kpi-card.failed {
+            border-left: 4px solid var(--color-fail);
+        }
+
+        .kpi-card.failed .kpi-icon {
+            color: var(--color-fail);
+            opacity: 0.12;
+        }
+
+        .kpi-card.failed .kpi-value {
+            color: #B4502F;
+        }
+
+        /* Đạt tương phản 4.5:1 */
+
+        .kpi-card.primary {
+            border-left: 4px solid var(--color-primary);
+        }
+
+        .kpi-card.primary .kpi-icon {
+            color: var(--color-primary);
+            opacity: 0.12;
+        }
+
+        /* Double Chart Grid Styles - Stroke-First Principles */
+        .charts-container {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: var(--surface);
+        }
+
+        .charts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .charts-title-area h2 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--color-primary);
+        }
+
+        .charts-title-area p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .charts-legend {
+            display: flex;
+            gap: 20px;
+            font-size: 0.775rem;
+            font-weight: 700;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.recall {
+            background: var(--color-pass);
+        }
+
+        .legend-dot.far {
+            background: var(--color-fail);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        @media (max-width: 1000px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+        }
+
+        .chart-panel {
+            background: #F7FAF8;
+            /* Soft Greenish Gray background for charts */
+            border: 1px solid rgba(96, 115, 111, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chart-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-panel-header h3 {
+            font-size: 0.8rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
+        }
+
+        .chart-target-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            padding: 2px 7px;
+            border-radius: 6px;
+            color: var(--text-muted);
+        }
+
+        .chart-viewport {
+            height: 140px;
+            /* Khôi phục về thông số cũ để biểu đồ gọn gàng */
+            position: relative;
+            width: 100%;
+        }
+
+        .chart-y-axis {
+            position: absolute;
+            left: 0;
+            top: 5px;
+            height: 115px;
+            /* Khôi phục về thông số cũ 115px */
+            width: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+
+        .chart-grid-lines {
+            position: absolute;
+            left: 45px;
+            right: 10px;
+            top: 5px;
+            height: 115px;
+            /* Khôi phục về thông số cũ 115px */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .grid-line {
+            width: 100%;
+            height: 1px;
+            background: rgba(96, 115, 111, 0.08);
+        }
+
+        .grid-line:last-child {
+            background: #7E8F8B;
+            /* Đường Ox màu sẫm nét đậm hơn ứng với vạch 0% */
+            height: 1.5px;
+        }
+
+        .target-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            border-top: 2px dashed rgba(217, 107, 67, 0.5);
+            /* Cam đất dịu target */
+            z-index: 10;
+        }
+
+        .recall-target-line {
+            top: 0;
+            border-top-color: rgba(217, 107, 67, 0.5);
+        }
+
+        .far-target-line {
+            bottom: 0;
+            border-top-color: rgba(58, 155, 120, 0.6);
+            /* Xanh tảo nhạt target */
+        }
+
+        .target-line-label {
+            position: absolute;
+            right: 10px;
+            top: -16px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .recall-target-line .target-line-label {
+            color: #B4502F;
+        }
+
+        .far-target-line .target-line-label {
+            color: #2E7D5F;
+        }
+
+        .chart-bars {
+            position: absolute;
+            left: 45px;
+            width: calc(100% - 55px);
+            /* Tránh lỗi shrink-to-fit của position absolute, đảm bảo giãn trọn chiều ngang */
+            min-width: calc(100% - 55px);
+            /* Bắt buộc trình duyệt giãn trọn chiều ngang, không cho phép co lại */
+            top: 5px;
+            height: 115px;
+            /* Khôi phục về thông số cũ 115px */
+            display: flex;
+            justify-content: space-evenly;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .chart-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+            /* Đổi từ space-between sang flex-end để cột bám chắc vào trục Ox */
+            flex: 1;
+            max-width: 32px;
+            min-width: 10px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .chart-column:hover {
+            transform: translateY(-2px);
+        }
+
+        .chart-bar-val {
+            font-size: 0.58rem;
+            font-weight: 800;
+            color: #1E2926;
+            /* Chữ sẫm tương phản cao */
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            pointer-events: none;
+            line-height: 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-bar-val.inside {
+            padding-top: 4px;
+            color: #1E2926;
+            /* Đen đậm trên nền mint/blue sáng */
+        }
+
+        .chart-bar-val.outside {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 4px;
+            color: #1E2926;
+            /* Đen đậm phía trên cột */
+        }
+
+        .chart-bar-fraction {
+            display: none;
+        }
+
+        .chart-bar-track {
+            width: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 100%;
+            /* Đổi từ 150px cố định thành 100% để lấp đầy phần cột */
+            position: relative;
+        }
+
+        /* RICH COLORED PILLAR: Màu sắc to đậm sắc nét, opacity 1.0 */
+        .chart-bar-pillar {
+            width: 100%;
+            border-radius: 4px 4px 0 0;
+            background: rgba(var(--bar-color-rgb), 0.85);
+            /* 85% Rich color fill */
+            border: 1px solid var(--bar-color);
+            /* Solid Outline stroke */
+            border-bottom: none;
+            opacity: 1.0;
+            /* Tô đậm 100% */
+            transition: var(--transition-smooth);
+            box-shadow: 0 2px 8px rgba(var(--bar-color-rgb), 0.08);
+            min-height: 2px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+
+        .chart-column:hover .chart-bar-pillar {
+            background: var(--bar-color);
+            /* Đậm đặc 100% khi hover */
+            opacity: 1.0;
+            box-shadow: 0 4px 14px rgba(var(--bar-color-rgb), 0.25);
+            filter: brightness(1.05);
+        }
+
+        .chart-bar-label {
+            position: absolute;
+            top: 100%;
+            /* Cố định vị trí nhãn ngay bên dưới cột (trục Ox) và căn giữa */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 55px;
+            /* Giãn rộng hơn cột để hiển thị Rule Name tự nhiên */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 0.52rem;
+            font-weight: 800;
+            color: var(--text-main);
+            /* Đen sẫm dễ đọc */
+            white-space: normal;
+            /* Cho phép xuống dòng khi Rule Name dài */
+            line-height: 1.1;
+            margin-top: 10px;
+            word-break: break-word;
+            /* Tự động ngắt từ tránh tràn viền */
+        }
+
+        .chart-bar-label span {
+            display: none;
+            /* Ẩn ngoặc đơn mã rule dưới trục hoành để tránh vỡ UI */
+        }
+
+        /* Premium Floating Glass Tooltip cho Biểu đồ */
+        .chart-tooltip {
+            position: absolute;
+            bottom: calc(100% + 22px);
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            background: rgba(34, 54, 49, 0.96);
+            /* Deep moss anti-glare theme */
+            border: 1px solid rgba(163, 230, 53, 0.25);
+            /* Muted mint border */
+            color: #FFFFFF;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            white-space: nowrap;
+            box-shadow: 0 6px 20px rgba(22, 34, 31, 0.25);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            line-height: 1.4;
+        }
+
+        .chart-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(34, 54, 49, 0.96) transparent transparent transparent;
+        }
+
+        .chart-column:hover .chart-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .chart-tooltip-title {
+            font-weight: 800;
+            color: var(--left-menu-active-text);
+            font-size: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 3px;
+            margin-bottom: 2px;
+        }
+
+        .chart-tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .chart-tooltip-label {
+            color: #99AFAB;
+            font-weight: 600;
+        }
+
+        .chart-tooltip-value {
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Horizontal AI details metrics bar (Confusion Matrix) */
+        .ai-metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            padding: 16px 8px;
+            border-radius: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        @media (max-width: 900px) {
+            .ai-metrics-bar {
+                grid-template-columns: repeat(4, 1fr);
+                row-gap: 16px;
+            }
+        }
+
+        .ai-metric-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid rgba(96, 115, 111, 0.1);
+            padding: 4px 0;
+        }
+
+        .ai-metric-item:last-child {
+            border-right: none;
+        }
+
+        .ai-metric-label {
+            font-size: 0.625rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .ai-metric-value {
+            font-size: 1.35rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-main);
+        }
+
+        /* 4.5:1 Legibility Contrast Semantic Colors mapped to Muted soft tones */
+        .ai-metric-value.tp-color {
+            color: #2E7D5F;
+        }
+
+        /* Green pass */
+        .ai-metric-value.fp-color {
+            color: #B4731A;
+        }
+
+        /* Muted Gold warn */
+        .ai-metric-value.fn-color {
+            color: #B4502F;
+        }
+
+        /* Cam đất fail */
+        .ai-metric-value.recall-color {
+            color: #6D28D9;
+        }
+
+        /* Deep Purple */
+        .ai-metric-value.far-color {
+            color: #B4502F;
+        }
+
+        /* Cam đất */
+        .ai-metric-value.precision-color {
+            color: #0284C7;
+        }
+
+        /* Blue */
+
+        /* Rules Cards Grid */
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .rule-card {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            cursor: pointer;
+            background: var(--surface);
+        }
+
+        .rule-card.active {
+            border-color: var(--left-menu-active);
+            background: rgba(72, 149, 116, 0.03);
+            /* Soft active green moss background tint */
+            box-shadow: 0 6px 18px rgba(34, 54, 49, 0.04);
+        }
+
+        .rule-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .rule-badge {
+            background: #EDF2F0;
+            border: 1px solid rgba(96, 115, 111, 0.15);
+            font-size: 0.725rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .rule-card.active .rule-badge {
+            background: rgba(72, 149, 116, 0.08);
+            border-color: rgba(72, 149, 116, 0.2);
+            color: #2E7D5F;
+        }
+
+        .rule-title-area h3 {
+            font-size: 0.95rem;
+            font-weight: 800;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-main);
+        }
+
+        .rule-title-area p {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .rule-stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(96, 115, 111, 0.08);
+            padding-top: 10px;
+        }
+
+        .rule-stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .rule-stat-val {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .rule-stat-val.success {
+            color: #2E7D5F;
+        }
+
+        .rule-stat-val.failed {
+            color: #B4502F;
+        }
+
+        /* Workplace / Interactive Filters */
+        .workspace-panel {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            background: var(--surface);
+        }
+
+        .workspace-panel-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--left-menu-bg);
+        }
+
+        /* Filter Controls */
+        .filter-controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #F4F7F5;
+            /* Matches Main Background for visual harmony */
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex-grow: 1;
+            min-width: 240px;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .search-input {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid rgba(96, 115, 111, 0.18);
+            border-radius: 8px;
+            padding: 9px 16px 9px 38px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.85rem;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        .search-input:focus {
+            border-color: var(--left-menu-active);
+            box-shadow: 0 0 8px rgba(72, 149, 116, 0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-toggle-group {
+            display: flex;
+            background: #FFFFFF;
+            border: 1px solid rgba(96, 115, 111, 0.15);
+            border-radius: 8px;
+            padding: 2px;
+        }
+
+        .btn-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px 12px;
+            font-size: 0.775rem;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-toggle:hover {
+            color: var(--text-main);
+        }
+
+        .btn-toggle.active {
+            background: var(--left-menu-active);
+            color: white;
+            box-shadow: 0 2px 6px rgba(72, 149, 116, 0.2);
+        }
+
+        .btn-toggle.active.passed {
+            background: var(--color-pass);
+            box-shadow: 0 2px 6px rgba(58, 155, 120, 0.2);
+        }
+
+        .btn-toggle.active.failed {
+            background: var(--color-fail);
+            box-shadow: 0 2px 6px rgba(217, 107, 67, 0.2);
+        }
+
+        /* Detailed testcases table */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            max-height: 580px;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #FFFFFF;
+            position: relative;
+        }
+
+        .testcases-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+            table-layout: fixed;
+        }
+
+        .testcases-table th {
+            background: #F4F7F5;
+            color: var(--text-muted);
+            font-weight: 800;
+            padding: 12px 16px;
+            text-transform: uppercase;
+            font-size: 0.725rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .testcases-table tr {
+            border-bottom: 1px solid rgba(96, 115, 111, 0.05);
+            transition: var(--transition-smooth);
+        }
+
+        .testcases-table tbody tr:hover {
+            background: #F7FAF8;
+        }
+
+        .testcases-table td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+
+        .td-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .td-video {
+            white-space: normal;
+            word-break: break-all;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .badge-status {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.725rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-status.approve {
+            background: rgba(72, 149, 116, 0.08);
+            color: #2E7D5F;
+            border: 1px solid rgba(72, 149, 116, 0.15);
+        }
+
+        .badge-status.reject {
+            background: rgba(233, 196, 106, 0.1);
+            color: #B4731A;
+            /* Darker warning gold */
+            border: 1px solid rgba(233, 196, 106, 0.2);
+        }
+
+        .badge-result {
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.725rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-transform: uppercase;
+        }
+
+        .badge-result.passed {
+            background: rgba(58, 155, 120, 0.08);
+            color: #2E7D5F;
+            /* Darker green */
+            border: 1px solid rgba(58, 155, 120, 0.15);
+        }
+
+        .badge-result.failed {
+            background: rgba(217, 107, 67, 0.08);
+            color: #B4502F;
+            /* Darker red/orange */
+            border: 1px solid rgba(217, 107, 67, 0.15);
+        }
+
+        .td-note {
+            color: var(--text-muted);
+            font-size: 0.775rem;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .td-expected {
+            color: var(--text-muted);
+            font-size: 0.775rem;
+            font-weight: 600;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .btn-action {
+            background: #FFFFFF;
+            border: 1px solid rgba(96, 115, 111, 0.2);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 6px 12px;
+            font-size: 0.775rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition-smooth);
+            font-family: inherit;
+        }
+
+        .btn-action:hover {
+            background: var(--left-menu-active);
+            border-color: var(--left-menu-active);
+            color: white;
+            box-shadow: 0 4px 10px rgba(72, 149, 116, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Side-by-Side Media Inspector Modal: Light Modern Theme */
+        .inspector-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(34, 54, 49, 0.35);
+            /* Soft Deep Moss Overlay background */
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+
+        .inspector-modal {
+            width: 95%;
+            max-width: 1480px;
+            height: 90vh;
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(34, 54, 49, 0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modal-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modal-enter {
+            from {
+                opacity: 0;
+                transform: scale(0.97) translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .inspector-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #FFFFFF;
+        }
+
+        .inspector-title-block h2 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--left-menu-bg);
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .inspector-title-block p {
+            font-size: 0.775rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .inspector-close-btn {
+            background: #F1F5F9;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: var(--transition-smooth);
+        }
+
+        .inspector-close-btn:hover {
+            background: rgba(217, 107, 67, 0.15);
+            color: var(--color-fail);
+            transform: rotate(90deg);
+        }
+
+        /* 3-Column Split Content */
+        .inspector-content {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding: 20px;
+            overflow-y: auto;
+            min-height: 0;
+            background: #F4F7F5;
+            /* Matches Main Anti-glare Background */
+        }
+
+        @media (max-width: 1024px) {
+            .inspector-content {
+                grid-template-columns: 1fr;
+                grid-auto-rows: minmax(280px, auto);
+            }
+        }
+
+        .inspector-panel {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.01);
+        }
+
+        .inspector-panel-header {
+            background: #FFFFFF;
+            padding: 10px 16px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(96, 115, 111, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .inspector-panel-header i {
+            color: var(--left-menu-active);
+        }
+
+        .inspector-viewer {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 16/9;
+        }
+
+        .inspector-viewer video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .inspector-viewer img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s;
+        }
+
+        .inspector-viewer img:hover {
+            cursor: zoom-in;
+        }
+
+        .media-placeholder {
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: #60736F;
+        }
+
+        .media-placeholder i {
+            font-size: 2.5rem;
+            margin-bottom: 4px;
+        }
+
+        /* Playlist Picker for Evidence Videos */
+        .evidence-playlist {
+            padding: 10px 16px;
+            background: #FFFFFF;
+            border-top: 1px solid rgba(96, 115, 111, 0.08);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .playlist-title {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .playlist-btn {
+            background: #EDF2F0;
+            border: 1px solid rgba(96, 115, 111, 0.15);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.725rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            font-weight: 600;
+        }
+
+        .playlist-btn:hover {
+            background: #DFE7E4;
+            color: var(--text-main);
+        }
+
+        .playlist-btn.active {
+            background: var(--left-menu-active);
+            border-color: var(--left-menu-active);
+            color: white;
+        }
+
+        /* Bottom Controls / Stats for Modal */
+        .inspector-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #FFFFFF;
+        }
+
+        .inspector-note-box {
+            background: #F4F7F5;
+            border: 1px solid rgba(96, 115, 111, 0.08);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            max-width: 60%;
+            min-width: 300px;
+        }
+
+        .inspector-note-title {
+            font-weight: 800;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        /* Note detail trong modal: mỗi phần 1 dòng, cắt gọn + hover xem full + nút copy */
+        .note-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 3px 0;
+        }
+
+        .note-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.8rem;
+            color: var(--text-main);
+        }
+
+        .note-copy-btn {
+            flex-shrink: 0;
+            background: #EDF2F0;
+            border: 1px solid rgba(96, 115, 111, 0.2);
+            border-radius: 6px;
+            padding: 3px 9px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            line-height: 1;
+            transition: var(--transition-smooth);
+        }
+
+        .note-copy-btn:hover {
+            background: var(--left-menu-active);
+            color: #FFFFFF;
+            border-color: var(--left-menu-active);
+        }
+
+        .inspector-navigation {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-nav {
+            background: #FFFFFF;
+            border: 1px solid rgba(96, 115, 111, 0.2);
+            border-radius: 8px;
+            color: var(--text-main);
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-nav:hover {
+            background: #EDF2F0;
+            border-color: rgba(96, 115, 111, 0.3);
+        }
+
+        .nav-counter {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Server Health Status Styles */
+        .health-status-card {
+            margin: 0;
+            padding: 8px 16px;
+            /* Tinh gọn padding cực nhỏ để tránh scroll */
+            width: 100%;
+        }
+
+        .health-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        .health-metric-subcard {
+            background: #F4F7F5;
+            border: 1px solid rgba(96, 115, 111, 0.08);
+            padding: 6px 12px;
+            /* Tinh gọn padding của subcard */
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            /* Tinh gọn gap cực nhỏ */
+            transition: var(--transition-smooth);
+        }
+
+        .health-metric-subcard:hover {
+            border-color: rgba(72, 149, 116, 0.25);
+            box-shadow: 0 4px 12px rgba(34, 54, 49, 0.02);
+            transform: translateY(-1px);
+        }
+
+        /* Pulse animations for status indicator dots */
+        @keyframes pulse-healthy {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(58, 155, 120, 0.4);
+            }
+
+            70% {
+                transform: scale(1.1);
+                opacity: 0.8;
+                box-shadow: 0 0 0 6px rgba(58, 155, 120, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(58, 155, 120, 0);
+            }
+        }
+
+        @keyframes pulse-failed {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(217, 107, 67, 0.4);
+            }
+
+            70% {
+                transform: scale(1.15);
+                opacity: 0.7;
+                box-shadow: 0 0 0 8px rgba(217, 107, 67, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(217, 107, 67, 0);
+            }
+        }
+
+        .pulse-dot-healthy {
+            animation: pulse-healthy 2s infinite;
+        }
+
+        .pulse-dot-failed {
+            animation: pulse-failed 1.5s infinite;
+        }
+
+        /* Micro Progress Bars for Aggregate statistics */
+        .mini-progress-bg {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-top: 3px;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: var(--transition-smooth);
+        }
+
+        /* ==========================================
+           PREMIUM RESPONSIVE MEDIA QUERIES (TABLET & MOBILE)
+           ========================================== */
+        @media (max-width: 1024px) {
+
+            /* Chuyển Layout sang dạng dọc */
+            .app-container {
+                flex-direction: column;
+            }
+
+            /* Biến đổi Sidebar thành Top Header hiện đại */
+            .sidebar {
+                position: static;
+                width: 100%;
+                max-width: 100%;
+                overflow: hidden;
+                height: auto;
+                padding: 16px 20px;
+                flex-direction: column;
+                gap: 14px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .brand-logo {
+                justify-content: center;
+                width: 100%;
+            }
+
+            /* Dải Menu Rules Trượt Ngang các kiểu mượt mà */
+            .sidebar-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                width: 100%;
+                max-width: 100%;
+                gap: 10px;
+                padding-bottom: 8px;
+                white-space: nowrap;
+                flex-grow: 0;
+                scrollbar-width: thin;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .sidebar-menu::-webkit-scrollbar {
+                height: 4px;
+            }
+
+            .menu-header {
+                display: none;
+                /* Ẩn chữ AI Rules trên mobile để tối giản diện tích */
+            }
+
+            #sidebar-rules-list {
+                display: flex;
+                flex-direction: row;
+                gap: 8px;
+                max-width: 100%;
+            }
+
+            .menu-item {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                border-radius: 8px;
+                white-space: nowrap;
+            }
+
+            .menu-item.active {
+                border-left: none;
+                border-bottom: 3px solid var(--left-menu-active-text);
+            }
+
+            /* Giải phóng Main Workspace */
+            .main-workspace {
+                margin-left: 0;
+                padding: 20px 16px;
+                gap: 20px;
+                width: 100%;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            /* Khóa container panel tránh bị phình theo bảng */
+            .workspace-panel {
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            /* Xếp chồng 2 card ở hàng 3 */
+            .overview-grid {
+                grid-template-columns: 1fr !important;
+                gap: 20px;
+            }
+
+            /* Khóa chiều rộng bảng để kích hoạt scroll ngang, chống bóp nghẹt cột */
+            .testcases-table {
+                min-width: 950px;
+            }
+        }
+
+        @media (max-width: 768px) {
+
+            /* Tiêu đề chính responsive */
+            .header-title-area h1 {
+                font-size: 1.4rem;
+                text-align: center;
+            }
+
+            .workspace-header {
+                justify-content: center;
+                flex-direction: column;
+                text-align: center;
+                gap: 12px;
+            }
+
+            .header-meta {
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+
+            /* Tăng khoảng cách và kích thước nút bấm bộ lọc để ngón tay dễ tương tác */
+            .filter-controls {
+                gap: 12px;
+                padding: 10px 12px;
+            }
+
+            .filter-group {
+                width: 100%;
+                justify-content: space-between;
+                /* Đẩy nhãn và cụm nút ra 2 đầu */
+            }
+
+            .btn-toggle {
+                padding: 6px 14px;
+                /* Tăng padding nút bấm đạt Touch Target chuẩn */
+                font-size: 0.8rem;
+            }
+
+            /* Popup details (Inspector Modal) dạng Full Screen trên Mobile */
+            .inspector-modal {
+                width: 100vw;
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+
+            /* Tối ưu hóa header Modal chống tràn tiêu đề video dài */
+            .inspector-title-block {
+                max-width: calc(100% - 48px);
+                /* Nhường chỗ cho nút close */
+            }
+
+            .inspector-title-block h2 {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                /* Thu gọn bằng dấu ba chấm */
+                width: 100%;
+                font-size: 1rem;
+            }
+
+            .inspector-content {
+                grid-template-columns: 1fr;
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .inspector-viewer {
+                aspect-ratio: 16/9;
+            }
+
+            /* Footer modal xếp chồng dọc chống tràn */
+            .inspector-footer {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .inspector-note-box {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .inspector-navigation {
+                justify-content: space-between;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+
+            /* Chuyển sang 2 cột thông thoáng trên Mobile nhỏ */
+            .ai-metrics-bar {
+                grid-template-columns: repeat(2, 1fr) !important;
+                row-gap: 12px;
+                column-gap: 12px;
+                padding: 14px 10px;
+            }
+
+            .ai-metric-item {
+                padding: 8px;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(96, 115, 111, 0.06);
+            }
+
+            .ai-metric-item:nth-child(even) {
+                border-left: 1px solid rgba(96, 115, 111, 0.06);
+            }
+
+            .ai-metric-label {
+                font-size: 0.65rem !important;
+            }
+
+            .ai-metric-value {
+                font-size: 1.35rem !important;
+            }
+        }
+
+        @media (max-width: 400px) {
+
+            /* Giảm gap giữa biểu đồ tròn và cụm Passed/Failed để không bị bóp méo */
+            .circular-chart-container+div {
+                gap: 4px !important;
+                min-width: 75px !important;
+            }
+
+            /* Giảm cỡ chữ của Micro KPI Grid để luôn luôn nằm gọn trên 1 dòng */
+            .circular-chart-container+div+div span {
+                font-size: 0.48rem !important;
+            }
+
+            .circular-chart-container+div+div strong {
+                font-size: 0.65rem !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-logo">
+                <i class="fa-solid fa-brain-circuit fa-lg"></i>
+                <span>EME AI Auto QC</span>
+            </div>
+
+            <nav class="sidebar-menu">
+                <!-- Overview Tab Item -->
+                <a class="menu-item active" id="sb-item-overview" onclick="selectOverview()">
+                    <div class="menu-item-left">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Overview Dashboard</span>
+                    </div>
+                </a>
+
+                <span class="menu-header">AI Rules</span>
+                <div id="sidebar-rules-list">
+                    <!-- Loaded dynamically by JS -->
+                </div>
+            </nav>
+
+            <!-- Sidebar footer version & slogan -->
+            <div
+                style="font-size: 0.7rem; color: rgba(255,255,255,0.35); text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; display: flex; flex-direction: column; gap: 5px; align-items: center;">
+                <div
+                    style="font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--left-menu-active-text); font-size: 0.68rem; display: flex; align-items: center; gap: 5px; opacity: 0.9;">
+                    <i class="fa-solid fa-gears" style="color: var(--left-menu-active-text);"></i> Engineered by QC Team
+                </div>
+                <div
+                    style="opacity: 0.65; font-size: 0.625rem; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-code-branch"></i> version <span id="sb-ai-version">3.3.0.0</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Workspace -->
+        <main class="main-workspace">
+
+            <!-- Header Block -->
+            <header class="workspace-header">
+                <div class="header-title-area">
+                    <h1 id="job-title">AI Rules Test Automation Report</h1>
+                    <div class="header-meta">
+                        <span class="meta-tag"><i class="fa-solid fa-cubes"></i>AI Version: <strong
+                                id="val-ai-version">3.3.0.0</strong></span>
+                        <span class="meta-tag"><i class="fa-solid fa-sliders"></i>Config: <strong
+                                id="val-config-version">v3.3.0.0-26_5_2026</strong></span>
+                        <span class="meta-tag"><i class="fa-solid fa-calendar-days"></i>Date: <strong
+                                id="val-test-date">20260529</strong></span>
+                    </div>
+                </div>
+
+                <!-- Quick Job Category Badge & Export Button Group -->
+                <div style="display: flex; align-items: center; gap: 12px;" data-html2canvas-ignore="true">
+                    <div class="badge-result passed"
+                        style="font-size: 0.8rem; padding: 5px 12px; background: rgba(58, 155, 120, 0.1); color: #2E7D5F; border-color: rgba(58, 155, 120, 0.2); height: 32px; display: inline-flex; align-items: center;"
+                        id="val-job-type">
+                        <i class="fa-solid fa-bolt"></i> SMOKE
+                    </div>
+
+<!--                    <button class="btn-action" onclick="exportDashboardAsPNG()" title="Export Dashboard to PNG"-->
+<!--                        style="height: 32px; font-size: 0.775rem; font-weight: 700; border-radius: 6px; padding: 0 12px; gap: 6px; background: #FFFFFF; border: 1px solid rgba(96, 115, 111, 0.2); display: inline-flex; align-items: center; cursor: pointer; color: var(&#45;&#45;text-main); transition: var(&#45;&#45;transition-smooth);">-->
+<!--                        <i class="fa-solid fa-camera" style="color: var(&#45;&#45;color-pass);"></i> Export PNG-->
+<!--                    </button>-->
+                </div>
+            </header>
+            <!-- Overview Workspace Container -->
+            <div id="overview-workspace" style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+
+                <!-- Server Health Status Block -->
+                <section class="glass-card health-status-card" data-html2canvas-ignore="true">
+                    <div class="health-status-header"
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px;">
+                        <h2
+                            style="font-size: 0.85rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa-solid fa-desktop"></i> Server Health Status
+                        </h2>
+                        <span class="status-badge" id="health-status-badge"
+                            style="font-size: 0.65rem; font-weight: 800; padding: 4px 10px; border-radius: 9999px; background: rgba(58, 155, 120, 0.1); color: #2E7D5F; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-circle-check"></i> HEALTHY
+                        </span>
+                    </div>
+
+                    <div class="health-metrics-grid">
+                        <!-- CPU -->
+                        <div class="health-metric-subcard">
+                            <span
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">CPU
+                                Busy</span>
+                            <div style="display: flex; align-items: baseline; gap: 6px; margin: 2px 0;">
+                                <strong
+                                    style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"
+                                    id="health-cpu-val">0.0%</strong>
+                                <span style="font-size: 0.675rem; color: var(--text-muted); font-weight: 700;"
+                                    id="health-cpu-text">(Low load)</span>
+                            </div>
+                            <div
+                                style="height: 6px; background: #EDF2F0; border-radius: 999px; overflow: hidden; margin-top: 4px;">
+                                <div id="health-cpu-bar"
+                                    style="width: 0%; height: 100%; background: var(--color-pass); transition: var(--transition-smooth); border-radius: 999px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RAM -->
+                        <div class="health-metric-subcard">
+                            <span
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">RAM
+                                Used</span>
+                            <div style="display: flex; align-items: baseline; gap: 6px; margin: 2px 0;">
+                                <strong
+                                    style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"
+                                    id="health-ram-val">0.0%</strong>
+                                <span style="font-size: 0.675rem; color: var(--text-muted); font-weight: 700;"
+                                    id="health-ram-text">(Stable)</span>
+                            </div>
+                            <div
+                                style="height: 6px; background: #EDF2F0; border-radius: 999px; overflow: hidden; margin-top: 4px;">
+                                <div id="health-ram-bar"
+                                    style="width: 0%; height: 100%; background: #8265A7; transition: var(--transition-smooth); border-radius: 999px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GPU -->
+                        <div class="health-metric-subcard">
+                            <span
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">GPU
+                                Usage</span>
+                            <div style="display: flex; align-items: baseline; gap: 6px; margin: 2px 0;">
+                                <strong
+                                    style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"
+                                    id="health-gpu-val">0.0%</strong>
+                                <span style="font-size: 0.675rem; color: var(--text-muted); font-weight: 700;"
+                                    id="health-gpu-text">(Idle)</span>
+                            </div>
+                            <div
+                                style="height: 6px; background: #EDF2F0; border-radius: 999px; overflow: hidden; margin-top: 4px;">
+                                <div id="health-gpu-bar"
+                                    style="width: 0%; height: 100%; background: var(--color-pass); transition: var(--transition-smooth); border-radius: 999px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Disk -->
+                        <div class="health-metric-subcard">
+                            <span
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Disk
+                                Available</span>
+                            <div style="display: flex; align-items: baseline; gap: 6px; margin: 2px 0;">
+                                <strong
+                                    style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"
+                                    id="health-disk-val">0 GB</strong>
+                                <span style="font-size: 0.675rem; color: var(--text-muted); font-weight: 700;"
+                                    id="health-disk-pct">(0% free)</span>
+                            </div>
+                            <div
+                                style="height: 6px; background: #EDF2F0; border-radius: 999px; overflow: hidden; margin-top: 4px;">
+                                <div id="health-disk-bar"
+                                    style="width: 0%; height: 100%; background: #4F709C; transition: var(--transition-smooth); border-radius: 999px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DeepStream -->
+                        <div class="health-metric-subcard">
+                            <span
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">DeepStream
+                                Service</span>
+                            <div style="display: flex; align-items: center; gap: 8px; height: 100%; margin-top: 4px;"
+                                id="health-deepstream-container">
+                                <span class="pulse-dot-healthy"
+                                    style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--color-pass);"
+                                    id="health-deepstream-dot"></span>
+                                <strong style="font-size: 0.85rem; font-weight: 800; color: #2E7D5F;"
+                                    id="health-deepstream-val">HEALTHY</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
+
+                <!-- Hàng 2: Grid chứa Recall Performance (Rộng) và Test Results - Pass Rate (Gọn) -->
+                <div class="overview-grid">
+                    <!-- Recall Performance Card -->
+                    <section class="glass-card charts-container"
+                        style="margin: 0; padding: 12px 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="charts-header"
+                            style="border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
+                            <div class="charts-title-area">
+                                <h2
+                                    style="font-size: 0.95rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <i class="fa-solid fa-chart-column" style="color: var(--color-pass);"></i> DETECTION
+                                    RATE - RECALL
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500; margin-left: 4px;">(DR
+                                        = TP / (TP + FN))</span>
+                                </h2>
+                            </div>
+                        </div>
+                        <div class="chart-panel"
+                            style="justify-content: space-between; background: #F7FAF8; border: 1px solid rgba(96, 115, 111, 0.08); border-radius: 12px; padding: 10px; height: 180px;">
+                            <div class="chart-viewport" style="height: 100%; position: relative; width: 100%;">
+                                <div class="chart-y-axis">
+                                    <span>100%</span>
+                                    <span>50%</span>
+                                    <span>0%</span>
+                                </div>
+                                <div class="chart-grid-lines">
+                                    <div class="grid-line"></div>
+                                    <div class="grid-line"></div>
+                                    <div class="grid-line"></div>
+                                </div>
+                                <div class="chart-bars" id="recall-bars-container">
+                                    <!-- Loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Card 1: Pass Rate Doughnut (Tối ưu thu gọn dạng Side-by-Side & đầy đặn hơn) -->
+                    <div class="glass-card"
+                        style="padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; height: 100%; justify-content: space-between;">
+                        <div
+                            style="width: 100%; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-weight: 800; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-solid fa-chart-pie"
+                                    style="color: var(--color-pass); margin-right: 6px;"></i> TEST RESULTS - PASS RATE
+                            </div>
+                        </div>
+
+                        <div
+                            style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 32px; padding: 4px 0;">
+                            <!-- Doughnut chart -->
+                            <div class="circular-chart-container"
+                                style="position: relative; width: 105px; height: 105px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="105" height="105" viewBox="0 0 160 160">
+                                    <circle cx="80" cy="80" r="70" fill="none" stroke="#EDF2F0" stroke-width="14" />
+                                    <circle class="circle-progress" cx="80" cy="80" r="70" fill="none"
+                                        stroke="var(--color-pass)" stroke-width="14" stroke-dasharray="440"
+                                        stroke-dashoffset="440" stroke-linecap="round" transform="rotate(-90 80 80)"
+                                        style="transition: stroke-dashoffset 1s ease-out;" />
+                                    <text x="80" y="78" text-anchor="middle" font-weight="800" font-size="28"
+                                        fill="var(--text-main)" font-family="inherit" id="circle-pass-rate">0%</text>
+                                    <text x="80" y="102" text-anchor="middle" font-weight="800" font-size="10"
+                                        fill="var(--text-muted)" letter-spacing="1" font-family="inherit">PASS
+                                        RATE</text>
+                                </svg>
+                            </div>
+
+                            <!-- Detailed numbers stacked nicely next to doughnut chart -->
+                            <div
+                                style="display: flex; flex-direction: column; gap: 8px; min-width: 90px; flex-grow: 0;">
+                                <div
+                                    style="display: flex; flex-direction: column; border-left: 3px solid var(--color-pass); padding-left: 8px;">
+                                    <span
+                                        style="font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Passed</span>
+                                    <span
+                                        style="font-size: 1.1rem; font-weight: 800; color: #2E7D5F; font-family: 'JetBrains Mono', monospace;"
+                                        id="stat-passed-count">0</span>
+                                </div>
+                                <div
+                                    style="display: flex; flex-direction: column; border-left: 3px solid var(--color-fail); padding-left: 8px;">
+                                    <span
+                                        style="font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Failed</span>
+                                    <span
+                                        style="font-size: 1.1rem; font-weight: 800; color: #B4502F; font-family: 'JetBrains Mono', monospace;"
+                                        id="stat-failed-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Micro KPI Grid bổ sung giúp board đầy đặn và sang trọng hơn -->
+                        <div
+                            style="border-top: 1px dashed var(--border); padding-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; margin-top: 4px;">
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">AVG
+                                    DR</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: var(--color-pass);"
+                                    id="val-avg-dr">0.0%</span>
+                            </div>
+                            <div
+                                style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Job
+                                    Type</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: #2E7D5F;"
+                                    id="val-job-type-badge">SMOKE</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">AVG
+                                    FAR</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: #3B82F6;"
+                                    id="val-avg-far">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hàng 3: Grid chứa FAR Performance (Rộng) và Aggregate Statistics (Gọn) -->
+                <div class="overview-grid">
+                    <!-- FAR Performance Card -->
+                    <section class="glass-card charts-container"
+                        style="margin: 0; padding: 12px 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="charts-header"
+                            style="border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px;">
+                            <div class="charts-title-area">
+                                <h2
+                                    style="font-size: 0.95rem; font-weight: 800; color: var(--color-primary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <i class="fa-solid fa-chart-column" style="color: #3B82F6;"></i> FALSE ALARM RATE -
+                                    FAR
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500; margin-left: 4px;">(FAR
+                                        = FP / (TP + FP))</span>
+                                </h2>
+                            </div>
+                        </div>
+                        <div class="chart-panel"
+                            style="justify-content: space-between; background: #F7FAF8; border: 1px solid rgba(96, 115, 111, 0.08); border-radius: 12px; padding: 10px; height: 180px;">
+                            <div class="chart-viewport" style="height: 100%; position: relative; width: 100%;">
+                                <div class="chart-y-axis">
+                                    <span>100%</span>
+                                    <span>50%</span>
+                                    <span>0%</span>
+                                </div>
+                                <div class="chart-grid-lines">
+                                    <div class="grid-line"></div>
+                                    <div class="grid-line"></div>
+                                    <div class="grid-line"></div>
+                                </div>
+                                <div class="chart-bars" id="far-bars-container">
+                                    <!-- Loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Card 2: Batch Aggregate Stats (Tối ưu thu gọn & bổ sung thông số đầy đặn) -->
+                    <div class="glass-card"
+                        style="padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; background: var(--left-menu-bg); border-color: rgba(255,255,255,0.05); color: #FFFFFF; position: relative; overflow: hidden; height: 100%; justify-content: space-between;">
+                        <!-- Abstract background glow for premium touch -->
+                        <div
+                            style="position: absolute; top: -50px; right: -50px; width: 120px; height: 120px; background: rgba(58, 155, 120, 0.15); filter: blur(35px); border-radius: 50%; pointer-events: none;">
+                        </div>
+
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; font-weight: 800; font-size: 0.75rem; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;"
+                            id="stat-batches-title">
+                            <i class="fa-solid fa-boxes-stacked"
+                                style="color: var(--left-menu-active-text); margin-right: 6px;"></i> AGGREGATE
+                            STATISTICS
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 12px; margin: 2px 0;">
+                            <div
+                                style="width: 42px; height: 42px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fa-solid fa-calculator"
+                                    style="font-size: 1.1rem; color: var(--left-menu-active-text);"></i>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span
+                                    style="font-size: 0.6rem; font-weight: 800; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL
+                                    TEST CASES</span>
+                                <div style="display: flex; align-items: baseline; gap: 6px;">
+                                    <strong
+                                        style="font-size: 1.75rem; font-weight: 800; line-height: 1; color: #FFFFFF;"
+                                        id="stat-total-cases">0</strong>
+                                    <span
+                                        style="font-size: 0.65rem; color: #99AFAB; font-weight: 500; font-style: italic; opacity: 0.85;">evaluated
+                                        streams</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Micro Rule KPI Grid giúp board Aggregate đầy đặn và chuyên nghiệp hơn -->
+                        <div
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 2px 0; text-align: center; background: rgba(255, 255, 255, 0.04); padding: 6px 4px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">Total
+                                    Rules</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: #FFFFFF;"
+                                    id="stat-total-rules-val">0 Rules</span>
+                            </div>
+                            <div
+                                style="display: flex; flex-direction: column; gap: 1px; border-left: 1px solid rgba(255,255,255,0.08); border-right: 1px solid rgba(255,255,255,0.08);">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">100%
+                                    Pass</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: #C5F4E4;"
+                                    id="stat-perfect-rules-val">0 Rules</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span
+                                    style="font-size: 0.55rem; font-weight: 700; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">Warnings</span>
+                                <span style="font-size: 0.725rem; font-weight: 800; color: #FFD4C5;"
+                                    id="stat-warning-rules-val">0 Rules</span>
+                            </div>
+                        </div>
+
+                        <div
+                            style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; display: flex; flex-direction: column; gap: 6px;">
+                            <!-- Min Pass Rate -->
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 0.725rem;">
+                                    <span style="color: #99AFAB; font-weight: 600;">Min Pass Rate</span>
+                                    <span
+                                        style="font-weight: 800; color: #FFD4C5; font-family: 'JetBrains Mono', monospace;"
+                                        id="stat-min-pass">0%</span>
+                                </div>
+                                <div class="mini-progress-bg">
+                                    <div id="stat-min-pass-bar" class="mini-progress-fill"
+                                        style="width: 0%; background: #D96B43;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Max Pass Rate -->
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 0.725rem;">
+                                    <span style="color: #99AFAB; font-weight: 600;">Max Pass Rate</span>
+                                    <span
+                                        style="font-weight: 800; color: #C5F4E4; font-family: 'JetBrains Mono', monospace;"
+                                        id="stat-max-pass">0%</span>
+                                </div>
+                                <div class="mini-progress-bg">
+                                    <div id="stat-max-pass-bar" class="mini-progress-fill"
+                                        style="width: 0%; background: var(--color-pass);"></div>
+                                </div>
+                            </div>
+
+                            <!-- Weighted Avg -->
+                            <div
+                                style="display: flex; flex-direction: column; gap: 2px; margin-top: 1px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; font-size: 0.725rem;">
+                                    <span style="color: #99AFAB; font-weight: 700;">Weighted Avg</span>
+                                    <span
+                                        style="font-weight: 800; color: var(--left-menu-active-text); font-family: 'JetBrains Mono', monospace; font-size: 0.825rem;"
+                                        id="stat-weighted-avg">0%</span>
+                                </div>
+                                <div class="mini-progress-bg"
+                                    style="height: 5px; background: rgba(255, 255, 255, 0.12);">
+                                    <div id="stat-weighted-avg-bar" class="mini-progress-fill"
+                                        style="width: 0%; background: var(--left-menu-active-text); box-shadow: 0 0 8px rgba(163, 230, 53, 0.4);">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workplace Section -->
+            <section class="glass-card workspace-panel" id="workspace-section">
+                <div class="workspace-header">
+                    <div class="workspace-panel-title">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span id="active-rule-title">Loading Rule...</span>
+                        <span class="rule-badge" id="active-rule-code">...</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;"
+                        id="active-rule-duration-info">
+                        <i class="fa-solid fa-clock"></i> Duration: <strong id="active-rule-duration">0s</strong>
+                    </div>
+                </div>
+
+                <!-- AI Details Metrics Bar (Hình 2 - Soft Sage & Muted Moss Theme) -->
+                <div class="ai-metrics-bar glass-card" id="ai-metrics-bar">
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">TOTAL VIDEO TEST</div>
+                        <div class="ai-metric-value" id="aim-total">0</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">TRUE POS (TP)</div>
+                        <div class="ai-metric-value tp-color" id="aim-tp">0</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">FALSE POS (FP)</div>
+                        <div class="ai-metric-value fp-color" id="aim-fp">0</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">FALSE NEG (FN)</div>
+                        <div class="ai-metric-value fn-color" id="aim-fn">0</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">TRUE NEG (TN)</div>
+                        <div class="ai-metric-value" id="aim-tn">0</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">DETECTION RATE</div>
+                        <div class="ai-metric-value recall-color" id="aim-recall">0.0%</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">FAR RATE</div>
+                        <div class="ai-metric-value far-color" id="aim-far">0.0%</div>
+                    </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">PRECISION</div>
+                        <div class="ai-metric-value precision-color" id="aim-precision">0.0%</div>
+                    </div>
+                </div>
+
+                <!-- Interactive Filters -->
+                <div class="filter-controls">
+                    <!-- Text Search -->
+                    <div class="search-wrapper">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" class="search-input" id="search-input"
+                            placeholder="Search by Video Name or QC Notes..." oninput="handleFiltersChange()">
+                    </div>
+
+                    <!-- Result Filter (TP/FP/FN/TN) -->
+                    <div class="filter-group">
+                        <span class="filter-label">AI Result</span>
+                        <div class="btn-toggle-group">
+                            <button class="btn-toggle active" id="btn-res-all"
+                                onclick="setResultFilter('ALL')">ALL</button>
+                            <button class="btn-toggle" id="btn-res-tp"
+                                onclick="setResultFilter('TP')">TP</button>
+                            <button class="btn-toggle" id="btn-res-fp"
+                                onclick="setResultFilter('FP')">FP</button>
+                            <button class="btn-toggle" id="btn-res-fn"
+                                onclick="setResultFilter('FN')">FN</button>
+                            <button class="btn-toggle" id="btn-res-tn"
+                                onclick="setResultFilter('TN')">TN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed testcases table -->
+                <div class="table-container">
+                    <table class="testcases-table" id="testcases-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th style="width: 260px;">Video Name</th>
+                                <th style="width: 180px;">Expected Result</th>
+                                <th style="width: 140px;">QC Val Result</th>
+                                <th>Actual Result</th>
+                                <th>QC Note</th>
+                                <th style="width: 140px; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="testcases-table-body">
+                            <!-- Dynamic loaded by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Side-by-Side Media Inspector Modal (Hình 3) -->
+    <div class="inspector-overlay" id="inspector-overlay">
+        <div class="inspector-modal">
+            <!-- Modal Header -->
+            <div class="inspector-header">
+                <div class="inspector-title-block">
+                    <h2 id="ins-video-name"><i class="fa-solid fa-circle-play" style="color: var(--left-menu-bg);"></i>
+                        Test Video</h2>
+                    <p>
+                        Rule: <span id="ins-rule-name" style="color: var(--text-main); font-weight: 700;">Rule
+                            Name</span>
+                        (<span id="ins-rule-code"
+                            style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--left-menu-active);">HM12</span>)
+                        |
+                        QC: <span id="ins-detect-result">PASSED</span>
+                    </p>
+                </div>
+                <button class="inspector-close-btn" onclick="closeInspector()"><i
+                        class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- 3-Column Split Content -->
+            <div class="inspector-content">
+                <!-- Panel 1: Video Gốc -->
+                <div class="inspector-panel">
+                    <div class="inspector-panel-header">
+                        <span><i class="fa-solid fa-file-video"></i> Raw Video</span>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted);"
+                            id="ins-val-expected-badge">EXPECTED: Approve</span>
+                    </div>
+                    <div class="inspector-viewer">
+                        <video id="ins-video-raw-player" controls autoplay muted loop>
+                            <source src="" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="media-placeholder" id="ins-video-raw-placeholder" style="display: none;">
+                            <i class="fa-regular fa-file-video"></i>
+                            <span>Raw video not found</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Ảnh Vùng Vẽ (Không có độ chính xác) -->
+                <div class="inspector-panel">
+                    <div class="inspector-panel-header"
+                        style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span><i class="fa-regular fa-image"></i> Zone Config</span>
+                        <button class="btn-copy-config" onclick="copyRuleConfig()" title="Copy Rule Config"
+                            style="background: rgba(96, 115, 111, 0.06); border: 1px solid rgba(96, 115, 111, 0.15); color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px; transition: var(--transition-smooth); border-radius: 6px; font-family: inherit; font-weight: 700;">
+                            <i class="fa-regular fa-copy"></i> Copy Config
+                        </button>
+                    </div>
+                    <div class="inspector-viewer" style="background: #000;">
+                        <img id="ins-image-config" src="" alt="Zone Configuration" onclick="zoomImage(this)">
+                        <div class="media-placeholder" id="ins-image-config-placeholder" style="display: none;">
+                            <i class="fa-regular fa-image"></i>
+                            <span>No zone configuration or image missing</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Video Bằng Chứng -->
+                <div class="inspector-panel">
+                    <div class="inspector-panel-header"
+                        style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <span><i class="fa-solid fa-video-slash"></i> Evidence Video</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn-action" id="btn-old-evidence"
+                                style="padding: 3px 8px; font-size: 0.68rem; display: none; align-items: center; gap: 4px; border-radius: 6px; font-weight: 700; color: #D96B43; border-color: rgba(217, 107, 67, 0.3); background: #FFFFFF;"
+                                onclick="openOldEvidence()">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Old Evidence
+                            </button>
+                            <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted);"
+                                id="ins-val-matched-badge">Frames: 0/0</span>
+                        </div>
+                    </div>
+                    <div class="inspector-viewer">
+                        <video id="ins-video-evidence-player" controls autoplay muted loop>
+                            <source src="" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="media-placeholder" id="ins-video-evidence-placeholder" style="display: none;">
+                            <i class="fa-solid fa-video-slash"></i>
+                            <span id="ins-video-evidence-placeholder-text">No evidence video (Passed report)</span>
+                        </div>
+                    </div>
+                    <!-- Playlist Picker if multi-evidence -->
+                    <div class="evidence-playlist" id="ins-playlist-container" style="display: none;">
+                        <span class="playlist-title">Playlist:</span>
+                        <div id="ins-playlist-buttons" style="display: flex; gap: 6px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Controls -->
+            <div class="inspector-footer">
+                <div class="inspector-note-box">
+                    <div class="inspector-note-title" id="ins-note-title">AI / QC Assessment & Notes</div>
+                    <div id="ins-note-content" style="color: var(--text-main); line-height: 1.4;">
+                        No failure details available.
+                    </div>
+                </div>
+
+                <div class="inspector-navigation">
+                    <button class="btn-nav" onclick="navigateTestcase(-1)"><i class="fa-solid fa-chevron-left"></i>
+                        Prev</button>
+                    <span class="nav-counter" id="ins-nav-counter">1 / 10</span>
+                    <button class="btn-nav" onclick="navigateTestcase(1)">Next <i
+                            class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </main> <!-- Đóng main-workspace -->
+    </div> <!-- Đóng app-container -->
+
+    <!-- Embedded Data Payload and Logic -->
+    <script>
+        // Placeholder which will be dynamically replaced by Python compilation script
+        const reportData = {{ TEST_REPORT_DATA_PLACEHOLDER }};
+
+        // State variables for dynamic interaction
+        let activeRuleCode = null;
+        let resultFilter = 'ALL'; // ALL, TP, FP, FN, TN
+        let filteredTestcases = [];
+        let activeTestcaseIndex = -1;
+        let activeRuleConfigString = "{}";
+
+        // Structured performance stats for each rule
+        const ruleStatsMap = {};
+
+        // detect_result giờ là outcome confusion-matrix: TP/FP/FN/TN (hoặc MISSING).
+        // TP/TN = test case đạt; FP/FN/MISSING = trượt.
+        function isPassedResult(r) {
+            return r === 'TP' || r === 'TN';
+        }
+
+        // Rút gọn chuỗi step: gộp các số LIÊN TIẾP trùng nhau thành 1.
+        // "5,5,5,3,3,2,2,1,1" -> "5,3,2,1". Hỗ trợ nhiều event ngăn bởi " | ".
+        function collapseSeq(seqStr) {
+            return (seqStr || '').split('|').map(seg => {
+                const nums = seg.split(',').map(s => s.trim()).filter(s => s !== '');
+                const out = [];
+                nums.forEach(n => {
+                    if (out.length === 0 || out[out.length - 1] !== n) out.push(n);
+                });
+                return out.join(',');
+            }).join(' | ');
+        }
+
+        // Trong note dạng "... - sequence step: 5,5,3 - step count: ...", rút gọn riêng
+        // phần sequence step, giữ nguyên các phần khác.
+        function collapseNoteSequence(note) {
+            if (!note) return note;
+            return note.split(' - ').map(part => {
+                const m = part.match(/^(\s*sequence step:\s*)(.+)$/i);
+                return m ? m[1] + collapseSeq(m[2]) : part;
+            }).join(' - ');
+        }
+
+        // Tách note thành nhiều dòng riêng: mỗi phần ngăn bởi " - " thành 1 <div>
+        // (vd "Sequence step: 1,2,3" và "step count: B1:5,..." -> 2 dòng). Có rút gọn sequence.
+        function formatNoteLines(note) {
+            const collapsed = collapseNoteSequence(note);
+            if (!collapsed) return '';
+            return collapsed.split(' - ').map(p => `<div>${p.trim()}</div>`).join('');
+        }
+
+        function escapeAttr(s) {
+            return String(s)
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Copy giá trị đầy đủ (lưu ở data-full) vào clipboard, có phản hồi tạm thời.
+        function copyNoteFromBtn(btn) {
+            const text = btn.getAttribute('data-full') || '';
+            const done = () => {
+                const old = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                setTimeout(() => { btn.innerHTML = old; }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+            } else {
+                fallbackCopy(text, done);
+            }
+        }
+
+        function fallbackCopy(text, done) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+            document.body.removeChild(ta);
+            done();
+        }
+
+        // Render note ĐẦY ĐỦ (không rút gọn) cho modal detail: mỗi phần " - " 1 dòng,
+        // cắt gọn bằng "..." (hover xem full qua title) + nút copy phần đó.
+        function renderNoteDetailLines(note) {
+            if (!note) return '<div class="note-line"><span class="note-text">N/A</span></div>';
+            return note.split(' - ').map(part => {
+                const esc = escapeAttr(part);
+                return `<div class="note-line">
+                    <span class="note-text" title="${esc}">${esc}</span>
+                    <button class="note-copy-btn" type="button" data-full="${esc}" onclick="copyNoteFromBtn(this)" title="Copy">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+
+        // Helper to get sort key: number prefix or lowercased string
+        function getRuleSortKey(ruleName) {
+            const match = ruleName.match(/^(\d+)/);
+            if (match) {
+                return { isNum: true, val: parseInt(match[1], 10) };
+            }
+            return { isNum: false, val: ruleName.toLowerCase() };
+        }
+
+        // Custom sort function: number prefixes sorted numerically, then alphabetic sort
+        function compareRules(batchA, batchB) {
+            const nameA = batchA.rule_name || "";
+            const nameB = batchB.rule_name || "";
+            const keyA = getRuleSortKey(nameA);
+            const keyB = getRuleSortKey(nameB);
+
+            if (keyA.isNum && keyB.isNum) {
+                return keyA.val - keyB.val;
+            }
+            if (keyA.isNum && !keyB.isNum) {
+                return -1; // Numbers first
+            }
+            if (!keyA.isNum && keyB.isNum) {
+                return 1; // Letters after numbers
+            }
+            return keyA.val.localeCompare(keyB.val);
+        }
+
+        // Init function
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!reportData || !reportData.details) {
+                console.error("Dữ liệu báo cáo kiểm thử trống hoặc không hợp lệ!");
+                return;
+            }
+
+            // Preprocess report details to handle empty rule codes and map expected statuses
+            Object.values(reportData.details).forEach(batch => {
+                if (!batch.rule_code) {
+                    batch.rule_code = batch.rule_name || 'UNKNOWN';
+                }
+                if (batch.test_case_validation_result) {
+                    batch.test_case_validation_result.forEach(item => {
+                        if (item.expected_status === 'Violation') {
+                            item.expected_status = 'Approve';
+                        } else if (item.expected_status === 'No violation' || item.expected_status === 'No trigger') {
+                            item.expected_status = 'Reject';
+                        }
+                    });
+                }
+            });
+
+            calculateAllRuleMetrics();
+            initDashboardMeta();
+            initCharts();
+            initSidebarAndCards();
+
+            // Pre-load first rule quietly to initialize rule stats & tables
+            const sortedBatches = Object.values(reportData.details).sort(compareRules);
+            if (sortedBatches.length > 0) {
+                selectRule(sortedBatches[0].rule_code);
+            }
+
+            // Switch to Overview tab by default
+            selectOverview();
+        });
+
+        // Precalculate all advanced confusion matrix stats for rules
+        function calculateAllRuleMetrics() {
+            Object.entries(reportData.details).forEach(([batchKey, batch]) => {
+                const ruleCode = batch.rule_code;
+                const cases = batch.test_case_validation_result || [];
+
+                let tp = 0;
+                let fp = 0;
+                let fn = 0;
+                let tn = 0;
+
+                cases.forEach(item => {
+                    // detect_result = outcome đã chấm sẵn ở backend (TP/FP/FN/TN/MISSING).
+                    switch (item.detect_result) {
+                        case 'TP': tp++; break;
+                        case 'FP': fp++; break;
+                        case 'FN': fn++; break;
+                        case 'TN': tn++; break;
+                        // MISSING (không có kết quả) -> không tính vào confusion matrix.
+                    }
+                });
+
+                const total = cases.length;
+                const recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 1.0;
+                const far = (tp + fp) > 0 ? (fp / (tp + fp)) : 0.0;
+                const precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 1.0;
+
+                ruleStatsMap[ruleCode] = {
+                    total,
+                    tp,
+                    fp,
+                    fn,
+                    tn,
+                    recall,
+                    far,
+                    precision
+                };
+            });
+        }
+
+        // Initialize overall metadata
+        function initDashboardMeta() {
+            const versionRun = reportData.version_run || {};
+            document.getElementById('sb-ai-version').textContent = versionRun.version_ai || '1.0.0.0';
+            document.getElementById('val-ai-version').textContent = versionRun.version_ai || '1.0.0.0';
+            document.getElementById('val-config-version').textContent = versionRun.version_config || 'N/A';
+            document.getElementById('val-job-type').innerHTML = `<i class="fa-solid fa-bolt"></i> ${versionRun.job || 'SMOKE'}`;
+
+            // Calculate aggregate stats
+            let totalTests = 0;
+            let passedCount = 0;
+            let failedCount = 0;
+            let sampleDate = '20260529';
+            let minPassRate = 100;
+            let maxPassRate = 0;
+            let totalBatches = 0;
+            let perfectBatchesCount = 0;
+            let warningBatchesCount = 0;
+
+            Object.values(reportData.details).forEach(batch => {
+                const stats = batch.test_statistics || {};
+                const total = stats.total || 0;
+                const passed = stats.passed || 0;
+                totalTests += total;
+                passedCount += passed;
+                failedCount += (stats.failed || 0);
+                totalBatches++;
+
+                const batchPassRate = total > 0 ? (passed / total) * 100 : 0;
+                if (batchPassRate < minPassRate) minPassRate = batchPassRate;
+                if (batchPassRate > maxPassRate) maxPassRate = batchPassRate;
+
+                if (batchPassRate >= 100) {
+                    perfectBatchesCount++;
+                } else {
+                    warningBatchesCount++;
+                }
+
+                if (batch.timedate) {
+                    sampleDate = batch.timedate;
+                }
+            });
+
+            const passRate = totalTests > 0 ? ((passedCount / totalTests) * 100).toFixed(2) : '0';
+
+            document.getElementById('val-test-date').textContent = sampleDate;
+
+            // Set values in the new Pass Rate Card
+            document.getElementById('circle-pass-rate').textContent = `${parseFloat(passRate).toFixed(1)}%`;
+            const passedEl = document.getElementById('stat-passed-count');
+            const failedEl = document.getElementById('stat-failed-count');
+            if (passedEl) passedEl.textContent = passedCount;
+            if (failedEl) failedEl.textContent = failedCount;
+
+            // Set values in the micro KPI badges of Pass Rate Card
+            document.getElementById('val-job-type-badge').textContent = versionRun.job || 'SMOKE';
+
+            // Calculate Average Recall & FAR across all rules
+            let totalRecallSum = 0;
+            let totalFarSum = 0;
+            let rulesCount = 0;
+
+            Object.entries(ruleStatsMap).forEach(([ruleCode, stats]) => {
+                totalRecallSum += stats.recall;
+                totalFarSum += stats.far;
+                rulesCount++;
+            });
+
+            const avgDr = rulesCount > 0 ? (totalRecallSum / rulesCount) * 100 : 0;
+            const avgFar = rulesCount > 0 ? (totalFarSum / rulesCount) * 100 : 0;
+
+            document.getElementById('val-avg-dr').textContent = `${avgDr.toFixed(1)}%`;
+            document.getElementById('val-avg-far').textContent = `${avgFar.toFixed(1)}%`;
+
+            // Circular SVG ring offset animation
+            const circle = document.querySelector('.circle-progress');
+            if (circle) {
+                const circumference = 440;
+                const offset = circumference - (parseFloat(passRate) / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+            }
+
+            // Set values in Aggregate Statistics Card
+            document.getElementById('stat-batches-title').innerHTML = `<i class="fa-solid fa-boxes-stacked" style="color: var(--left-menu-active-text); margin-right: 6px;"></i> AGGREGATE STATISTICS (${totalBatches} BATCHES)`;
+            document.getElementById('stat-total-cases').textContent = totalTests;
+            document.getElementById('stat-min-pass').textContent = `${minPassRate.toFixed(2)}%`;
+            document.getElementById('stat-min-pass-bar').style.width = `${minPassRate}%`;
+            document.getElementById('stat-max-pass').textContent = `${maxPassRate.toFixed(2)}%`;
+            document.getElementById('stat-max-pass-bar').style.width = `${maxPassRate}%`;
+            document.getElementById('stat-weighted-avg').textContent = `${parseFloat(passRate).toFixed(2)}%`;
+            document.getElementById('stat-weighted-avg-bar').style.width = `${parseFloat(passRate)}%`;
+
+            // Set values in the micro Rule KPI Grid of Aggregate Card
+            document.getElementById('stat-total-rules-val').textContent = `${totalBatches} Rules`;
+            document.getElementById('stat-perfect-rules-val').textContent = `${perfectBatchesCount} Rules`;
+            document.getElementById('stat-warning-rules-val').textContent = `${warningBatchesCount} Rules`;
+
+            // Cập nhật động Server Health Status từ file JSON của người dùng
+            const health = reportData.health || {};
+            const rawHealth = health.raw || {};
+            const summaryHealth = health.summary || {};
+            // Không có dữ liệu health (vd "health": {} trong JSON) -> hiển thị N/A thay vì 0%.
+            const hasHealth = Object.keys(rawHealth).length > 0 || Object.keys(summaryHealth).length > 0;
+
+            // 1. Cập nhật Badge trạng thái tổng thể
+            const badge = document.getElementById('health-status-badge');
+            if (badge) {
+                if (!hasHealth) {
+                    badge.innerHTML = `<i class="fa-solid fa-circle-question"></i> N/A`;
+                    badge.style.background = 'rgba(120, 120, 120, 0.1)';
+                    badge.style.color = 'var(--text-muted)';
+                } else {
+                    const isHealthy = summaryHealth.is_healthy !== false;
+                    badge.innerHTML = isHealthy
+                        ? `<i class="fa-solid fa-circle-check"></i> HEALTHY`
+                        : `<i class="fa-solid fa-triangle-exclamation"></i> UNHEALTHY`;
+                    badge.style.background = isHealthy ? 'rgba(58, 155, 120, 0.1)' : 'rgba(217, 107, 67, 0.1)';
+                    badge.style.color = isHealthy ? '#2E7D5F' : '#B4502F';
+                }
+            }
+
+            // 2. CPU
+            const cpuVal = rawHealth.cpu_usage_percentage !== undefined ? rawHealth.cpu_usage_percentage : 0;
+            document.getElementById('health-cpu-val').textContent = hasHealth ? `${cpuVal.toFixed(1)}%` : 'N/A';
+            const cpuBar = document.getElementById('health-cpu-bar');
+            if (cpuBar) cpuBar.style.width = hasHealth ? `${cpuVal}%` : '0%';
+            const cpuText = document.getElementById('health-cpu-text');
+            if (cpuText) {
+                cpuText.textContent = !hasHealth ? '' : (cpuVal > 80 ? '(High load)' : cpuVal > 50 ? '(Moderate load)' : '(Low load)');
+                cpuText.style.color = cpuVal > 80 ? '#B4502F' : cpuVal > 50 ? '#B4731A' : 'var(--text-muted)';
+            }
+            if (cpuBar) {
+                cpuBar.style.background = cpuVal > 80 ? 'var(--color-fail)' : cpuVal > 50 ? '#B4731A' : 'var(--color-pass)';
+            }
+
+            // 3. RAM
+            const ramVal = rawHealth.ram_usage_percentage !== undefined ? rawHealth.ram_usage_percentage : 0;
+            document.getElementById('health-ram-val').textContent = hasHealth ? `${ramVal.toFixed(1)}%` : 'N/A';
+            const ramBar = document.getElementById('health-ram-bar');
+            if (ramBar) ramBar.style.width = hasHealth ? `${ramVal}%` : '0%';
+            const ramText = document.getElementById('health-ram-text');
+            if (ramText) {
+                ramText.textContent = !hasHealth ? '' : (ramVal > 85 ? '(Critical)' : ramVal > 60 ? '(Warning)' : '(Stable)');
+                ramText.style.color = ramVal > 85 ? '#B4502F' : ramVal > 60 ? '#B4731A' : 'var(--text-muted)';
+            }
+            if (ramBar) {
+                ramBar.style.background = ramVal > 85 ? 'var(--color-fail)' : ramVal > 60 ? '#B4731A' : '#8265A7';
+            }
+
+            // 4. GPU
+            const gpuVal = rawHealth.gpu_usage_percentage !== undefined ? rawHealth.gpu_usage_percentage : 0;
+            document.getElementById('health-gpu-val').textContent = hasHealth ? `${gpuVal.toFixed(1)}%` : 'N/A';
+            const gpuBar = document.getElementById('health-gpu-bar');
+            if (gpuBar) gpuBar.style.width = hasHealth ? `${gpuVal}%` : '0%';
+            const gpuText = document.getElementById('health-gpu-text');
+            if (gpuText) {
+                gpuText.textContent = !hasHealth ? '' : (gpuVal > 80 ? '(Heavy load)' : gpuVal > 15 ? '(Active)' : '(Idle)');
+                gpuText.style.color = gpuVal > 80 ? '#B4502F' : gpuVal > 15 ? '#2E7D5F' : 'var(--text-muted)';
+            }
+            if (gpuBar) {
+                gpuBar.style.background = gpuVal > 80 ? 'var(--color-fail)' : 'var(--color-pass)';
+            }
+
+            // 5. Disk Available (tính toán dung lượng GB và % trống cực kỳ chính xác)
+            const diskAvailBytes = rawHealth.disk_available_bytes || 0;
+            const diskTotalBytes = rawHealth.disk_total_bytes || 1;
+            const diskAvailGb = diskAvailBytes / (1024 * 1024 * 1024);
+            const diskFreePct = (diskAvailBytes / diskTotalBytes) * 100;
+
+            document.getElementById('health-disk-val').textContent = hasHealth ? `${diskAvailGb.toFixed(2)} GB` : 'N/A';
+            document.getElementById('health-disk-pct').textContent = hasHealth ? `(${diskFreePct.toFixed(1)}% free)` : '';
+            const diskBar = document.getElementById('health-disk-bar');
+            if (diskBar) {
+                diskBar.style.width = hasHealth ? `${diskFreePct}%` : '0%';
+                diskBar.style.background = diskFreePct < 10 ? 'var(--color-fail)' : diskFreePct < 25 ? '#B4731A' : '#4F709C';
+            }
+
+            // 6. DeepStream Service
+            const dsHealthy = rawHealth.deepstream_is_healthy !== false;
+            const dsVal = document.getElementById('health-deepstream-val');
+            const dsDot = document.getElementById('health-deepstream-dot');
+            if (dsVal) {
+                dsVal.textContent = !hasHealth ? 'N/A' : (dsHealthy ? 'HEALTHY' : 'CRITICAL');
+                dsVal.style.color = !hasHealth ? 'var(--text-muted)' : (dsHealthy ? '#2E7D5F' : '#B4502F');
+            }
+            if (dsDot) {
+                dsDot.className = (hasHealth && !dsHealthy) ? 'pulse-dot-failed' : 'pulse-dot-healthy';
+                dsDot.style.background = !hasHealth ? 'var(--text-muted)' : (dsHealthy ? 'var(--color-pass)' : 'var(--color-fail)');
+            }
+        }
+
+
+
+        // Initialize Dynamic Custom Vertical Bar Charts (Recall and FAR)
+        function initCharts() {
+            const recallContainer = document.getElementById('recall-bars-container');
+            const farContainer = document.getElementById('far-bars-container');
+
+            recallContainer.innerHTML = '';
+            farContainer.innerHTML = '';
+
+            // Keep the original order of rules as defined in JSON (matches sidebar and premium display order)
+            const sortedBatches = Object.values(reportData.details).sort(compareRules);
+
+            // Dynamic spacing & font size based on number of rules to prevent UI breaking
+            const ruleCount = sortedBatches.length;
+            let labelFontSize = '0.52rem';
+            let barsGap = '10px';
+
+            if (ruleCount > 15) {
+                labelFontSize = '0.42rem'; // Chữ rất nhỏ gọn cho 20 rules nằm ngang
+                barsGap = '4px';
+            } else if (ruleCount > 10) {
+                labelFontSize = '0.46rem';
+                barsGap = '8px';
+            }
+
+            recallContainer.style.gap = barsGap;
+            farContainer.style.gap = barsGap;
+
+            sortedBatches.forEach((batch, idx) => {
+                const ruleCode = batch.rule_code;
+                const ruleName = batch.rule_name || ruleCode;
+                // Loại bỏ tiền tố số thứ tự dạng "1. ", "2. ", v.v. để hiển thị chân cột gọn gàng
+                const displayRuleName = ruleName.replace(/^\d+\.\s*/, '');
+                const stats = ruleStatsMap[ruleCode];
+                if (!stats) return;
+
+                // Recall colors: Premium Sage Green
+                const colorRecall = '#3A9B78';
+                const rgbRecall = '58,155,120';
+
+                // FAR colors: Premium Friendly Blue
+                const colorFar = '#3B82F6';
+                const rgbFar = '59, 130, 246';
+
+                // 1. Recall Bar
+                const recallPercent = (stats.recall * 100).toFixed(1);
+                const recallFraction = `${stats.tp}/${stats.tp + stats.fn}`;
+
+                const recallCol = document.createElement('div');
+                recallCol.className = 'chart-column';
+                recallCol.onclick = () => selectRule(ruleCode);
+                recallCol.innerHTML = `
+                    <div class="chart-bar-track">
+                        <div class="chart-bar-pillar" style="height: ${recallPercent}%; --bar-color: ${colorRecall}; --bar-color-rgb: ${rgbRecall};">
+                            <div class="chart-bar-val outside">
+                                <span style="font-weight: 800; font-size: 0.58rem; color: #1E2926;">${recallPercent}%</span>
+                                <span style="font-size: 0.48rem; font-weight: 700; color: var(--text-muted); opacity: 0.85; margin-top: 1px;">${recallFraction}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-tooltip">
+                        <div class="chart-tooltip-title">${ruleName}</div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">Rule Code:</span>
+                            <span class="chart-tooltip-value" style="color: var(--left-menu-active-text);">${ruleCode}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">Recall:</span>
+                            <span class="chart-tooltip-value" style="color: var(--color-pass);">${recallPercent}%</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">Detail:</span>
+                            <span class="chart-tooltip-value">${recallFraction}</span>
+                        </div>
+                    </div>
+                    <div class="chart-bar-label" style="font-size: ${labelFontSize};">${displayRuleName}</div>
+                `;
+                recallContainer.appendChild(recallCol);
+
+                // 2. FAR Bar
+                const farPercent = (stats.far * 100).toFixed(1);
+                const farFraction = `${stats.fp}/${stats.tp + stats.fp}`;
+
+                const farCol = document.createElement('div');
+                farCol.className = 'chart-column';
+                farCol.onclick = () => selectRule(ruleCode);
+                farCol.innerHTML = `
+                    <div class="chart-bar-track">
+                        <div class="chart-bar-pillar" style="height: ${farPercent}%; --bar-color: ${colorFar}; --bar-color-rgb: ${rgbFar};">
+                            <div class="chart-bar-val outside">
+                                <span style="font-weight: 800; font-size: 0.58rem; color: #1E2926;">${farPercent}%</span>
+                                <span style="font-size: 0.48rem; font-weight: 700; color: var(--text-muted); opacity: 0.85; margin-top: 1px;">${farFraction}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-tooltip">
+                        <div class="chart-tooltip-title">${ruleName}</div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">Rule Code:</span>
+                            <span class="chart-tooltip-value" style="color: var(--left-menu-active-text);">${ruleCode}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                             <span class="chart-tooltip-label">FAR:</span>
+                             <span class="chart-tooltip-value" style="color: #3B82F6;">${farPercent}%</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">Detail:</span>
+                            <span class="chart-tooltip-value">${farFraction}</span>
+                        </div>
+                    </div>
+                    <div class="chart-bar-label" style="font-size: ${labelFontSize};">${displayRuleName}</div>
+                `;
+                farContainer.appendChild(farCol);
+            });
+        }
+
+        // Initialize Sidebar and Rule Cards Grid
+        function initSidebarAndCards() {
+            const sidebarContainer = document.getElementById('sidebar-rules-list');
+            const cardsContainer = document.getElementById('rules-cards-container');
+
+            sidebarContainer.innerHTML = '';
+            if (cardsContainer) cardsContainer.innerHTML = '';
+
+            const sortedBatches = Object.values(reportData.details).sort(compareRules);
+            sortedBatches.forEach(batch => {
+                const ruleCode = batch.rule_code;
+                const ruleName = batch.rule_name;
+                const stats = batch.test_statistics || {};
+                const passRate = stats.total > 0 ? ((stats.passed / stats.total) * 100).toFixed(1) : '0';
+                const totalTests = stats.total || 0;
+                const passedCount = stats.passed || 0;
+
+                // Get Detection Rate (DR/Recall)
+                const ruleMetrics = ruleStatsMap[ruleCode] || {};
+                const drRate = ruleMetrics.recall !== undefined ? (ruleMetrics.recall * 100).toFixed(1) : '0.0';
+
+                // Sidebar Item
+                const sidebarItem = document.createElement('a');
+                sidebarItem.className = 'menu-item';
+                sidebarItem.id = `sb-item-${ruleCode}`;
+                sidebarItem.onclick = () => selectRule(ruleCode);
+
+                const badgeClass = parseFloat(drRate) >= 100 ? 'success' : 'danger';
+                sidebarItem.innerHTML = `
+                    <div class="menu-item-left">
+                        <i class="fa-solid fa-circle-nodes"></i>
+                        <span>${ruleName}</span>
+                    </div>
+                    <span class="menu-badge ${badgeClass}">${drRate}%</span>
+                `;
+                sidebarContainer.appendChild(sidebarItem);
+
+                // Grid Card (only created if cardsContainer is present)
+                if (cardsContainer) {
+                    const card = document.createElement('div');
+                    card.className = `glass-card rule-card`;
+                    card.id = `rule-card-${ruleCode}`;
+                    card.onclick = () => selectRule(ruleCode);
+
+                    card.innerHTML = `
+                        <div class="rule-card-header">
+                            <div class="rule-title-area">
+                                <h3>${ruleName}</h3>
+                                <p>${batch.rule_type} Violations</p>
+                            </div>
+                            <span class="rule-badge">${ruleCode}</span>
+                        </div>
+                        
+                        <div class="health-bar-container" style="gap: 4px; display: flex; flex-direction: column;">
+                            <div class="health-bar-label" style="font-size: 0.75rem; display: flex; justify-content: space-between; font-weight: 700; color: var(--text-muted);">
+                                <span>Pass Rate</span>
+                                <span style="font-weight: 800; color: ${parseFloat(passRate) >= 100 ? '#2E7D5F' : '#B4502F'}">${passRate}%</span>
+                            </div>
+                            <div class="health-bar-bg" style="height: 6px; background: #EDF2F0; border-radius: 999px; overflow: hidden;">
+                                <div class="health-bar-fill" style="width: ${passRate}%; height: 100%; border-radius: 999px; background: ${parseFloat(passRate) >= 100 ? 'var(--color-pass)' : 'linear-gradient(90deg, var(--color-fail), var(--color-warning))'}"></div>
+                            </div>
+                        </div>
+
+                        <div class="rule-stats-row">
+                            <div class="rule-stat-item">
+                                <span>Test Cases</span>
+                                <span class="rule-stat-val">${totalTests}</span>
+                            </div>
+                            <div class="rule-stat-item">
+                                <span>Passed</span>
+                                <span class="rule-stat-val success">${passedCount}</span>
+                            </div>
+                            <div class="rule-stat-item">
+                                <span>Failed</span>
+                                <span class="rule-stat-val failed">${totalTests - passedCount}</span>
+                            </div>
+                        </div>
+                    `;
+                    cardsContainer.appendChild(card);
+                }
+            });
+        }
+
+        // Switch to general Overview dashboard tab
+        function selectOverview() {
+            // Update sidebar active status (highlight Overview, de-highlight all rule links)
+            document.querySelectorAll('.sidebar-menu .menu-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            const sbItem = document.getElementById('sb-item-overview');
+            if (sbItem) sbItem.classList.add('active');
+
+            // Remove active highlight from all rule grid cards
+            document.querySelectorAll('.rules-grid .rule-card').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Toggle view containers: Show general Overview and hide individual rule Workspace
+            const overviewEl = document.getElementById('overview-workspace');
+            const ruleWorkspaceEl = document.getElementById('workspace-section');
+            if (overviewEl) overviewEl.style.display = 'flex';
+            if (ruleWorkspaceEl) ruleWorkspaceEl.style.display = 'none';
+
+            // Scroll smoothly to top of page
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Switch active rule
+        function selectRule(ruleCode) {
+            activeRuleCode = ruleCode;
+
+            // Update sidebar active status
+            document.querySelectorAll('.sidebar-menu .menu-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            const sbItem = document.getElementById(`sb-item-${ruleCode}`);
+            if (sbItem) sbItem.classList.add('active');
+
+            // Update cards active status
+            document.querySelectorAll('.rules-grid .rule-card').forEach(el => {
+                el.classList.remove('active');
+            });
+            const cardEl = document.getElementById(`rule-card-${ruleCode}`);
+            if (cardEl) cardEl.classList.add('active');
+
+            // Toggle view containers: Hide general Overview and show individual rule Workspace
+            const overviewEl = document.getElementById('overview-workspace');
+            const ruleWorkspaceEl = document.getElementById('workspace-section');
+            if (overviewEl) overviewEl.style.display = 'none';
+            if (ruleWorkspaceEl) ruleWorkspaceEl.style.display = 'flex';
+
+            // Find batch data
+            const batch = Object.values(reportData.details).find(b => b.rule_code === ruleCode);
+            if (!batch) return;
+
+            // Update active header workspace
+            document.getElementById('active-rule-title').textContent = batch.rule_name;
+            document.getElementById('active-rule-code').textContent = batch.rule_code;
+            document.getElementById('active-rule-duration').textContent = batch.timing ? batch.timing.duration_formatted : 'N/A';
+
+            // Populate the Horizontal AI Details Metrics Bar
+            const stats = ruleStatsMap[ruleCode];
+            if (stats) {
+                document.getElementById('aim-total').textContent = stats.total;
+                document.getElementById('aim-tp').textContent = stats.tp;
+                document.getElementById('aim-fp').textContent = stats.fp;
+                document.getElementById('aim-fn').textContent = stats.fn;
+                document.getElementById('aim-tn').textContent = stats.tn;
+                document.getElementById('aim-recall').textContent = `${(stats.recall * 100).toFixed(1)}%`;
+                document.getElementById('aim-far').textContent = `${(stats.far * 100).toFixed(1)}%`;
+                document.getElementById('aim-precision').textContent = `${(stats.precision * 100).toFixed(1)}%`;
+            }
+
+            // Reset Filter Buttons
+            setResultFilter('ALL', false);
+            document.getElementById('search-input').value = '';
+
+            // Scroll smoothly to top of page (since Overview is hidden, Rule Details is now at the top)
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Render test cases table
+            renderRuleTestcases();
+        }
+
+        // Set result filter (ALL, TP, FP, FN, TN)
+        function setResultFilter(val, triggerFilter = true) {
+            resultFilter = val;
+
+            const btns = {
+                'ALL': 'btn-res-all',
+                'TP': 'btn-res-tp',
+                'FP': 'btn-res-fp',
+                'FN': 'btn-res-fn',
+                'TN': 'btn-res-tn'
+            };
+
+            Object.entries(btns).forEach(([k, btnId]) => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    if (k === val) {
+                        // TP/TN = đạt (xanh), FP/FN = trượt (cam)
+                        const tone = (k === 'TP' || k === 'TN') ? 'passed' : (k === 'FP' || k === 'FN') ? 'failed' : '';
+                        btn.className = `btn-toggle active ${tone}`;
+                    } else {
+                        btn.className = 'btn-toggle';
+                    }
+                }
+            });
+
+            if (triggerFilter) {
+                renderRuleTestcases();
+            }
+        }
+
+        // Set expected filter (ALL, Approve, Reject)
+        function handleFiltersChange() {
+            renderRuleTestcases();
+        }
+
+        // Render test cases in table based on filters
+        function renderRuleTestcases() {
+            const tableBody = document.getElementById('testcases-table-body');
+            tableBody.innerHTML = '';
+
+            const batch = Object.values(reportData.details).find(b => b.rule_code === activeRuleCode);
+            if (!batch) return;
+
+            const cases = batch.test_case_validation_result || [];
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+
+            // Filter cases
+            filteredTestcases = cases.filter(item => {
+                const vName = (item.video_name || '').toLowerCase();
+                const note = (item.validation_note || '').toLowerCase();
+                const actualNote = (item.actual_note || '').toLowerCase();
+                const matchedSearch = vName.includes(searchQuery) || note.includes(searchQuery) || actualNote.includes(searchQuery);
+                const matchedResult = resultFilter === 'ALL' || item.detect_result === resultFilter;
+
+                return matchedSearch && matchedResult;
+            });
+
+            if (filteredTestcases.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px 0; width: 100%;">
+                            <i class="fa-regular fa-folder-open" style="font-size: 2rem; margin-bottom: 8px; display: block;"></i>
+                            No test cases match the active filters
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filteredTestcases.forEach((item, index) => {
+                const tr = document.createElement('tr');
+
+                const expClass = item.expected_status === 'Approve' ? 'approve' : 'reject';
+                const actClass = item.actual_note && item.actual_note.includes('vi phạm') && !item.actual_note.includes('Không') ? 'approve' : 'reject';
+                const actText = item.actual_note && item.actual_note.includes('vi phạm') && !item.actual_note.includes('Không') ? 'Approve' : 'Reject';
+                const qcClass = isPassedResult(item.detect_result) ? 'passed' : 'failed';
+                const qcIcon = isPassedResult(item.detect_result) ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation';
+
+                tr.innerHTML = `
+                    <td class="td-id">${item.test_case_id}</td>
+                    <td class="td-video" title="${item.video_name}">${item.video_name}</td>
+                    <td class="td-expected">${formatNoteLines(item.expect_note) || 'N/A'}</td>
+                    <td>
+                        <span class="badge-result ${qcClass}">
+                            <i class="${qcIcon}"></i> ${item.detect_result}
+                        </span>
+                    </td>
+                    <td class="td-note">
+                        <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${formatNoteLines(item.actual_note) || 'N/A'}</div>
+                    </td>
+                    <td class="td-note">
+                        <div style="font-weight: 700; color: var(--text-main);">${item.validation_note || 'Runs model correctly'}</div>
+                    </td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <button class="btn-action" onclick="openInspector(${index})" style="margin: 0 auto; display: inline-flex;">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> Compare
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Side-by-Side Lightbox Modal Functions
+        function openInspector(index) {
+            if (index === undefined || index < 0 || index >= filteredTestcases.length) return;
+
+            activeTestcaseIndex = index;
+            const item = filteredTestcases[index];
+            const batch = Object.values(reportData.details).find(b => b.rule_code === activeRuleCode);
+
+            // Trích xuất config tương ứng của test case này để phục vụ chức năng copy
+            let configData = null;
+            if (batch) {
+                const meta = (batch.videos_metadata || []).find(m => m.video_name === item.video_name);
+                if (meta && batch.rule_config && batch.rule_config.config) {
+                    configData = batch.rule_config.config[meta.camera_code];
+                }
+
+                if (!configData && batch.rule_config && batch.rule_config.config) {
+                    const camCode = Object.keys(batch.videos_config || {}).find(code => {
+                        const videoIdList = batch.videos_config[code] || [];
+                        return videoIdList.some(id => item.video_name.includes(id));
+                    });
+                    if (camCode) {
+                        configData = batch.rule_config.config[camCode];
+                        if (!configData) configData = batch.rule_config.config[camCode + '_1'] || batch.rule_config.config[camCode + '_2'];
+                    }
+                }
+
+                if (!configData && batch.rule_config && batch.rule_config.config) {
+                    const keys = Object.keys(batch.rule_config.config);
+                    if (keys.length > 0) {
+                        configData = batch.rule_config.config[keys[0]];
+                    }
+                }
+            }
+            activeRuleConfigString = configData ? JSON.stringify(configData, null, 4) : "{}";
+
+            // Set modal basic title properties
+            document.getElementById('ins-video-name').innerHTML = `<i class="fa-solid fa-circle-play" style="color: var(--left-menu-bg);"></i> ${item.video_name}`;
+            document.getElementById('ins-rule-name').textContent = batch.rule_name;
+            document.getElementById('ins-rule-code').textContent = batch.rule_code;
+
+            // QC Result Badge
+            const qcBadge = document.getElementById('ins-detect-result');
+            qcBadge.textContent = item.detect_result;
+            qcBadge.className = isPassedResult(item.detect_result) ? 'badge-result passed' : 'badge-result failed';
+
+            // Expected / Frame details header info
+            document.getElementById('ins-val-expected-badge').textContent = `EXPECTED: ${item.expected_status}`;
+            document.getElementById('ins-val-matched-badge').textContent = `Frames: ${item.matched_frames}/${item.total_frames}`;
+
+            // Check and handle Old Evidence Button
+            const oldEvidenceBtn = document.getElementById('btn-old-evidence');
+            if (oldEvidenceBtn) {
+                if (item.url_video_old_evidence) {
+                    oldEvidenceBtn.style.display = 'inline-flex';
+                    oldEvidenceBtn.dataset.url = item.url_video_old_evidence;
+                } else {
+                    oldEvidenceBtn.style.display = 'none';
+                    oldEvidenceBtn.dataset.url = '';
+                }
+            }
+
+            // 1. Raw Video Panel
+            const rawPlayer = document.getElementById('ins-video-raw-player');
+            const rawPlaceholder = document.getElementById('ins-video-raw-placeholder');
+            if (item.url_video_raw) {
+                rawPlayer.src = item.url_video_raw;
+                rawPlayer.style.display = 'block';
+                rawPlaceholder.style.display = 'none';
+                rawPlayer.load();
+            } else {
+                rawPlayer.style.display = 'none';
+                rawPlaceholder.style.display = 'flex';
+            }
+
+            // 2. Zone Config Image Panel
+            const imgConfig = document.getElementById('ins-image-config');
+            const imgPlaceholder = document.getElementById('ins-image-config-placeholder');
+            if (item.url_image_config) {
+                imgConfig.src = item.url_image_config;
+                imgConfig.style.display = 'block';
+                imgPlaceholder.style.display = 'none';
+            } else {
+                imgConfig.style.display = 'none';
+                imgPlaceholder.style.display = 'flex';
+            }
+
+            // 3. Evidence Video Panel & Multi Playlist selector
+            const evidencePlayer = document.getElementById('ins-video-evidence-player');
+            const evidencePlaceholder = document.getElementById('ins-video-evidence-placeholder');
+            const playlistContainer = document.getElementById('ins-playlist-container');
+            const playlistButtons = document.getElementById('ins-playlist-buttons');
+
+            playlistContainer.style.display = 'none';
+            playlistButtons.innerHTML = '';
+
+            const evidenceVideos = item.list_url_video_evidence || [];
+
+            if (evidenceVideos.length > 0) {
+                evidencePlaceholder.style.display = 'none';
+                evidencePlayer.style.display = 'block';
+
+                // If single video, load immediately
+                if (evidenceVideos.length === 1) {
+                    evidencePlayer.src = evidenceVideos[0];
+                    evidencePlayer.load();
+                } else {
+                    // Multi-playlist picker setup
+                    playlistContainer.style.display = 'flex';
+                    evidenceVideos.forEach((vidUrl, vidIdx) => {
+                        const btn = document.createElement('button');
+                        btn.className = `playlist-btn ${vidIdx === 0 ? 'active' : ''}`;
+                        btn.textContent = `Clip ${vidIdx + 1}`;
+                        btn.onclick = () => {
+                            document.querySelectorAll('.playlist-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            evidencePlayer.src = vidUrl;
+                            evidencePlayer.load();
+                        };
+                        playlistButtons.appendChild(btn);
+                    });
+
+                    // Set active to first one
+                    evidencePlayer.src = evidenceVideos[0];
+                    evidencePlayer.load();
+                }
+            } else if (item.url_video_evidence) {
+                evidencePlaceholder.style.display = 'none';
+                evidencePlayer.style.display = 'block';
+                evidencePlayer.src = item.url_video_evidence;
+                evidencePlayer.load();
+            } else {
+                evidencePlayer.style.display = 'none';
+                evidencePlaceholder.style.display = 'flex';
+
+                const plText = document.getElementById('ins-video-evidence-placeholder-text');
+                if (isPassedResult(item.detect_result) && item.expected_status === 'Reject') {
+                    plText.textContent = "No evidence video (Passed report as expected)";
+                } else if (!isPassedResult(item.detect_result) && item.expected_status === 'Approve') {
+                    plText.textContent = "ERROR: AI MISSED VIOLATION (No evidence video created)";
+                } else {
+                    plText.textContent = "No evidence video information available";
+                }
+            }
+
+            // Note Content
+            const noteContent = document.getElementById('ins-note-content');
+            let qcDetailsHtml = `
+                <div style="margin-bottom: 4px;"><strong>Expected:</strong></div>
+                ${renderNoteDetailLines(item.expect_note)}
+                <div style="margin: 8px 0 4px;"><strong>Actual Detection:</strong></div>
+                ${renderNoteDetailLines(item.actual_note)}
+            `;
+            if (item.validation_note) {
+                qcDetailsHtml += `<div style="color: #B4502F; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> QC Assessment: ${item.validation_note}</div>`;
+            }
+            noteContent.innerHTML = qcDetailsHtml;
+
+            // Update bottom Counter
+            document.getElementById('ins-nav-counter').textContent = `${index + 1} / ${filteredTestcases.length}`;
+
+            // Show Overlay Modal
+            document.getElementById('inspector-overlay').style.display = 'flex';
+        }
+
+        function closeInspector() {
+            // Stop video playing
+            document.getElementById('ins-video-raw-player').pause();
+            document.getElementById('ins-video-evidence-player').pause();
+
+            document.getElementById('ins-video-raw-player').src = '';
+            document.getElementById('ins-video-evidence-player').src = '';
+
+            document.getElementById('inspector-overlay').style.display = 'none';
+        }
+
+        function openOldEvidence() {
+            const oldEvidenceBtn = document.getElementById('btn-old-evidence');
+            if (oldEvidenceBtn && oldEvidenceBtn.dataset.url) {
+                window.open(oldEvidenceBtn.dataset.url, '_blank');
+            }
+        }
+
+        // Sao chép config rule vào clipboard kèm hiệu ứng micro-animation và cơ chế fallback tương thích cao
+        function copyRuleConfig() {
+            const doCopy = () => {
+                const btn = document.querySelector('.btn-copy-config');
+                if (btn) {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = `<i class="fa-solid fa-check" style="color: var(--color-pass);"></i> Copied!`;
+                    btn.style.borderColor = 'var(--color-pass)';
+                    btn.style.background = 'rgba(58, 155, 120, 0.08)';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.style.borderColor = '';
+                        btn.style.background = '';
+                    }, 2000);
+                }
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(activeRuleConfigString).then(doCopy).catch(err => {
+                    fallbackCopy(activeRuleConfigString, doCopy);
+                });
+            } else {
+                fallbackCopy(activeRuleConfigString, doCopy);
+            }
+        }
+
+        function fallbackCopy(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";  // Tránh cuộn trang xuống cuối
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) callback();
+            } catch (err) {
+                console.error('Fallback copy failed: ', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Zoom image configuration in a new tab
+        function zoomImage(imgEl) {
+            if (imgEl && imgEl.src) {
+                window.open(imgEl.src, '_blank');
+            }
+        }
+
+        // Navigate previous / next cases in the lightbox modal
+        function navigateTestcase(direction) {
+            const nextIndex = activeTestcaseIndex + direction;
+            if (nextIndex >= 0 && nextIndex < filteredTestcases.length) {
+                openInspector(nextIndex);
+            }
+        }
+
+        // Escape Key press listener for modal exit
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeInspector();
+            }
+            if (document.getElementById('inspector-overlay').style.display === 'flex') {
+                if (e.key === 'ArrowLeft') {
+                    navigateTestcase(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navigateTestcase(1);
+                }
+            }
+        });
+
+        // Export Dashboard as PNG using html2canvas
+        function exportDashboardAsPNG() {
+            const overviewEl = document.getElementById('overview-workspace');
+            const ruleWorkspaceEl = document.getElementById('workspace-section');
+            if (!overviewEl) return;
+
+            // Tạm thời hiển thị Dashboard nếu nó đang bị ẩn
+            const isOverviewHidden = overviewEl.style.display === 'none';
+            if (isOverviewHidden) {
+                overviewEl.style.display = 'flex';
+                if (ruleWorkspaceEl) ruleWorkspaceEl.style.display = 'none';
+            }
+
+            const btn = document.querySelector('button[onclick="exportDashboardAsPNG()"]');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Exporting...`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                html2canvas(overviewEl, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#F4F7F5',
+                    logging: false
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    const dateStr = document.getElementById('val-test-date').textContent || '20260529';
+                    link.download = `AI_Rules_Automation_Report_${dateStr}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+
+                    btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Exported!`;
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                    }, 2000);
+
+                    if (isOverviewHidden) {
+                        overviewEl.style.display = 'none';
+                        if (ruleWorkspaceEl) ruleWorkspaceEl.style.display = 'flex';
+                    }
+                }).catch(err => {
+                    console.error("Error exporting dashboard:", err);
+                    btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                    }, 2000);
+
+                    if (isOverviewHidden) {
+                        overviewEl.style.display = 'none';
+                        if (ruleWorkspaceEl) ruleWorkspaceEl.style.display = 'flex';
+                    }
+                });
+            }, 100);
+        }
+    </script>
+</body>
+
+</html>

@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from adapters.waiting import WaitingBase
 from configs.loader import ConfigLoader
 from configs.schema import JobDef, RuleDef, TenantConfig
 from interfaces.analysis_client import AnalysisClient, HealthStatus
@@ -27,16 +28,18 @@ class PipelineContext:
     video_store: VideoStore
     report_formats: list[str] = field(default_factory=lambda: ["console"])
     report_dir: str = "reports"
-    download_dir: str = "downloads"
     strategy: ValidationStrategy | None = None  # None = validator tự chọn theo dữ liệu
     evidence_publisher: EvidencePublisher | None = None  # None = không publish evidence
-
+    waiting: WaitingBase = None
     # Tích luỹ qua các bước
     ground_truth: list[GroundTruthRecord] = field(default_factory=list)
     videos_by_rule: dict[str, list[VideoRef]] = field(default_factory=dict)
     missing: list[VideoRef] = field(default_factory=list)
     predictions: dict[str, Prediction] = field(default_factory=dict)
     report: ValidationReport | None = None
+    batch_codes: dict[str, str] = field(default_factory=dict)  # rule.code -> batch_code (trigger)
+    rule_api_response: dict[str, dict] = field(default_factory=dict)  # rule.code -> phản hồi /api/rule
+    started_at: float = 0.0  # epoch lúc bắt đầu run (cho timing trong report template)
 
     # Điều khiển chain
     aborted: bool = False

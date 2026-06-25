@@ -1,6 +1,6 @@
 rules:
   - name: 'Hygiene'
-    code: ''
+    code: 'Hygiene'
     sheet: 'HandWashing'
     type: 'SHORT'
     time_sleep: 7

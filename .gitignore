@@ -8,3 +8,4 @@ downloads/
 *.credentials.json
 service_account*.json
 .env
+video_raw/

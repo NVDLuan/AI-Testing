@@ -5,7 +5,6 @@ Quy ước có vi phạm: tồn tại evidence cho video_code đó trong batch.
 from __future__ import annotations
 
 import logging
-import os
 import time
 
 from configs.schema import RuleDef
@@ -46,20 +45,19 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         norm_missing = {norm_name(m) for m in resp.json().get("missing_videos", [])}
         return [v for v in videos if norm_name(v.name) in norm_missing]
 
-    def upload(self, video: VideoRef, file_path: str | None = None) -> None:
+    def upload(self, video: VideoRef, content: bytes | None = None, filename: str = "") -> None:
         # API nhận multipart field 'videos' (List[UploadFile]). Gửi 1 file/lần.
-        if not file_path:
-            raise ValueError(f"upload {video.video_id}: thiếu file_path (cần tải từ S3 trước)")
-        with open(file_path, "rb") as f:
-            resp = self._session.post(
-                self._url("/api/videos"),
-                files=[("videos", (os.path.basename(file_path), f, "video/mp4"))],
-                timeout=600,
-            )
+        if not content:
+            raise ValueError(f"upload {video.video_id}: thiếu nội dung video (fetch rỗng)")
+        name = filename or video.name or f"{video.video_id}.mp4"
+        resp = self._session.post(
+            self._url("/api/videos"),
+            files=[("videos", (name, content, "video/mp4"))],
+            timeout=600,
+        )
         resp.raise_for_status()
 
-    def trigger(self, videos: list[VideoRef], rule: RuleDef) -> str:
-        batch_code = self.make_batch_code(rule.code or rule.name)
+    def trigger(self, videos: list[VideoRef], rule: RuleDef, batch_code: str) -> str:
         videos_config: dict[str, list[str]] = {}
         for v in videos:
             videos_config.setdefault(v.camera_id or "unknown", []).append(v.name)
@@ -135,16 +133,18 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         min_wait = rule.time_sleep if rule else 0
         deadline = time.time() + self._timeout_sec
         start = time.time()
-        prev: set[str] | None = None
+        prev: dict[str, int] | None = None
         by_video: dict[str, list[dict]] = {}
 
         while time.time() < deadline:
             by_video = self._fetch_evidences(job_id, rule.code if rule else "")
             elapsed = time.time() - start
-            # Coi như xong khi đã chờ tối thiểu và tập video có evidence ổn định giữa 2 lần poll.
-            if elapsed >= min_wait and prev is not None and set(by_video) == prev:
+            # Chữ ký = SỐ evidence mỗi video (không chỉ tập tên) -> 1 video nhận thêm
+            # evidence cũng làm chữ ký đổi, tránh dừng sớm khi evidence tới rải rác.
+            sig = {name: len(evs) for name, evs in by_video.items()}
+            if elapsed >= min_wait and prev is not None and sig == prev:
                 break
-            prev = set(by_video)
+            prev = sig
             time.sleep(self._poll_interval_sec)
 
         results: dict[str, Prediction] = {}

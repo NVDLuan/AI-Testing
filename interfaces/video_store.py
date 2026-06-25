@@ -1,4 +1,4 @@
-"""Interface nơi lưu video nguồn (S3, local...) để tải về trước khi upload."""
+"""Interface nơi lưu video nguồn (S3, local...) để lấy về rồi upload."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -8,6 +8,6 @@ from validator.models import VideoRef
 
 class VideoStore(ABC):
     @abstractmethod
-    def download(self, video: VideoRef, dest_dir: str) -> str:
-        """Tải video về `dest_dir`, trả về đường dẫn file local."""
+    def fetch(self, video: VideoRef) -> tuple[bytes, str]:
+        """Lấy video vào RAM. Trả (nội dung bytes, tên file) để upload thẳng, khỏi ghi đĩa."""
         raise NotImplementedError

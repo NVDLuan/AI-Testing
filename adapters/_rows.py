@@ -22,21 +22,22 @@ def parse_bool(value: Any) -> bool:
 
 
 def parse_trigger_status(value: Any) -> tuple[bool, bool]:
-    """Phân tích cột 3-trạng-thái (bv_c) -> (triggered, violation).
+    """Phân tích cột "Expected Status" của bv_c -> (triggered, violation).
 
-        "No Trigger"             -> (False, False)
-        "Trigger (No Violation)" -> (True,  False)
-        "Trigger (Violation)"    -> (True,  True)
+    Vocabulary thật trên sheet (và biến thể khoan dung):
+        "No trigger"             -> (False, False)  # hệ thống KHÔNG nên trigger
+        "No violation"           -> (True,  False)  # có trigger nhưng đúng (không vi phạm)
+        "Violation"              -> (True,  True)   # có trigger và vi phạm
+        ("Trigger (No Violation)"/"Trigger (Violation)" cũng nhận đúng)
 
-    Khoan dung với biến thể chữ/dấu ngoặc; mặc định an toàn = (False, False).
+    Quy tắc: "no trigger"/rỗng -> không trigger. Còn lại -> đã trigger; có vi phạm khi
+    có chữ "violation" mà KHÔNG phải "no violation".
     """
     s = str(value or "").strip().lower()
-    if not s or "no trigger" in s or s.startswith("notrigger"):
+    if not s or "no trigger" in s or s.replace(" ", "") == "notrigger":
         return (False, False)
-    if "trigger" in s:
-        violation = "violation" in s and "no violation" not in s
-        return (True, violation)
-    return (False, False)
+    violation = "violation" in s and "no violation" not in s
+    return (True, violation)
 
 
 def make_video_id(rule: RuleDef, video_name: str) -> str:

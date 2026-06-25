@@ -32,7 +32,7 @@ class MockAnalysisClient(AnalysisClient):
     def check_missing(self, videos: list[VideoRef]) -> list[VideoRef]:
         return [v for v in videos if v.video_id not in self._uploaded]
 
-    def upload(self, video: VideoRef, file_path: str | None = None) -> None:
+    def upload(self, video: VideoRef, content: bytes | None = None, filename: str = "") -> None:
         self._uploaded.add(video.video_id)
 
     def trigger(self, videos: list[VideoRef], rule: RuleDef) -> str:

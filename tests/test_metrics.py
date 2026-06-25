@@ -17,7 +17,7 @@ def test_confusion_matrix_metrics():
 
     assert (cm.tp, cm.fp, cm.fn, cm.tn) == (2, 1, 1, 2)
     assert abs(cm.recall - 2 / 3) < 1e-9          # TP/(TP+FN)
-    assert abs(cm.far - 1 / 3) < 1e-9             # FP/(FP+TN)
+    assert abs(cm.far - 1 / 3) < 1e-9             # FP/(TP+FP)
     assert abs(cm.precision - 2 / 3) < 1e-9
 
 

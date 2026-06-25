@@ -106,3 +106,37 @@ class FileBrowserFetcher(EvidenceFetcher):
                         f.write(chunk)
         log.info("File Browser tải %s -> %s", ref, local)
         return local
+
+
+class DownloadEvidenceHandWashingFetcher(FileBrowserFetcher):
+    API_LOGIN = "/api/login"
+    API_RAW = "/api/raw"
+    
+    def convert_url(self, file_path: str) -> str:
+        return file_path.replace('app/data', 'ehp-video-data')
+
+    def fetch(self, ref: str, dest_dir: str) -> str:
+        file_path = ref if ref.startswith("/") else f"/{ref}"
+        resp = self._get_raw(self.convert_url(file_path))
+
+        # Fallback: một số path có tiền tố "/evidence" thừa so với root của API raw.
+        if resp is not None and resp.status_code != 200 and file_path.startswith("/evidence"):
+            resp.close()
+            resp = self._get_raw(file_path[len("/evidence"):])
+
+        if resp is None or resp.status_code != 200:
+            status = resp.status_code if resp is not None else "n/a"
+            log.warning("File Browser tải evidence thất bại: path=%s status=%s", ref, status)
+            if resp is not None:
+                resp.close()
+            return ""
+
+        os.makedirs(dest_dir, exist_ok=True)
+        local = os.path.join(dest_dir, _safe_basename(file_path))
+        with resp:
+            with open(local, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=1 << 20):  # 1MB
+                    if chunk:
+                        f.write(chunk)
+        log.info("File Browser tải %s -> %s", ref, local)
+        return local

@@ -62,8 +62,15 @@ class EvidencePublisher:
                 refs.append(str(ref))
         return refs
 
-    def publish(self, customer_id: str, video_id: str, events: list[dict]) -> list[str]:
-        """Trả về danh sách URL công khai cho các evidence của một video."""
+    def publish(
+        self, customer_id: str, batch_code: str, rule_name: str, events: list[dict]
+    ) -> list[str]:
+        """Trả về danh sách URL công khai cho các evidence của một batch.
+
+        Key S3: `{key_prefix}/{customer_id}/{batch_code}/{rule_name}/{filename.ext}` (vd
+        reports/bv_c/<batch_code>/<rule_name>/<file>). Khi 1 batch có nhiều evidence trùng
+        tên file thì các file từ thứ 2 trở đi được thêm tiền tố `NN_` để khỏi đè nhau.
+        """
         urls: list[str] = []
         for idx, ref in enumerate(self._refs(events)):
             local = ""
@@ -71,7 +78,10 @@ class EvidencePublisher:
                 local = self._fetcher.fetch(ref, self._work_dir)
                 if not local:
                     continue
-                key = f"{self._key_prefix}/{_slug(customer_id)}/{_slug(video_id)}/{idx:02d}_{os.path.basename(local)}"
+                name = os.path.basename(local)
+                if idx:  # tránh đè khi nhiều evidence cùng tên trong 1 batch
+                    name = f"{idx:02d}_{name}"
+                key = f"{self._key_prefix}/{_slug(customer_id)}/{_slug(batch_code)}/{_slug(rule_name)}/{name}"
                 url = self._uploader.upload(local, key)
                 if url:
                     urls.append(url)

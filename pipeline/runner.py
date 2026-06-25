@@ -5,6 +5,7 @@ Toàn bộ logic từng bước nằm ở handlers.py; nơi đây chỉ lắp r�
 from __future__ import annotations
 
 import logging
+import time
 
 from configs.loader import ConfigLoader
 from configs.schema import JobDef, RuleDef, TenantConfig
@@ -39,6 +40,8 @@ def run_job(
         evidence_publisher=factory.create_evidence_publisher(tenant, opts),
         report_formats=report_formats,
         report_dir=report_dir,
+        started_at=time.time(),
+        waiting = factory.create_waiting(tenant, opts),
     )
     chain = factory.create_chain(tenant, opts)
     return chain.handle(ctx)

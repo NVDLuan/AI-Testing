@@ -59,6 +59,9 @@ def _lcs_ratio(expected: list[int], actual: list[int]) -> float:
 class HandWashingStrategy(TriggerViolationStrategy):
     name = "hand_washing"
 
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(gt, pred, check_status=True)
+
     # --- expected từ sheet -----------------------------------------------------
 
     @staticmethod
@@ -100,6 +103,61 @@ class HandWashingStrategy(TriggerViolationStrategy):
             "similarity": round(_lcs_ratio(expected, actual), 2),
         }
 
+    @staticmethod
+    def _event_violation_ok(gt: GroundTruthRecord, ev: dict) -> bool:
+        return gt.expected_violation == bool(ev.get("violation"))
+
+    def _event_sequence_ok(self, gt: GroundTruthRecord, ev: dict, *, exact: bool = False) -> bool:
+        expected_seq = self._expected_sequence(gt)
+        actual_seq = ev.get("sequence", []) or []
+        if exact:
+            return set(expected_seq) == set(actual_seq)
+        if not expected_seq:
+            return True
+        return bool(actual_seq) and _is_subsequence(expected_seq, actual_seq)
+
+    def _event_counts_ok(self, gt: GroundTruthRecord, ev: dict) -> bool:
+        expected = self._expected_counts(gt)
+        if not expected:
+            return True
+        steps, _acc = self._check_counts(expected, ev.get("counts", {}))
+        return bool(steps) and all(s["passed"] for s in steps)
+
+    def _event_outcome(
+            self, gt: GroundTruthRecord, ev: dict,
+            *, check_status: bool, check_sequence: bool, check_counts: bool, exact_sequence: bool,
+    ) -> str:
+        ok = True
+        if check_status:
+            ok = ok and self._event_violation_ok(gt, ev)
+        if check_sequence:
+            ok = ok and self._event_sequence_ok(gt, ev, exact=exact_sequence)
+        if check_counts:
+            ok = ok and self._event_counts_ok(gt, ev)
+        return "TP" if ok else "FP"
+
+    def _classify_events(
+            self, gt: GroundTruthRecord, pred: Prediction,
+            *, check_status: bool, check_sequence: bool = False, check_counts: bool = False,
+            exact_sequence: bool = False,
+    ) -> list[str]:
+        exp_trig = bool(gt.expected_triggered)
+        if not bool(pred.triggered):
+            return ["FN"] if exp_trig else ["TN"]
+        if not pred.events:
+            return ["FP"]  # có trigger nhưng không có event nào để chấm -> coi là sai
+        outcomes = [
+            self._event_outcome(
+                gt, ev,
+                check_status=check_status, check_sequence=check_sequence,
+                check_counts=check_counts, exact_sequence=exact_sequence,
+            )
+            for ev in pred.events
+        ]
+        if "TP" not in outcomes:
+            outcomes.append("FN")  # không event nào đạt -> cộng thêm 1 FN (bỏ sót)
+        return outcomes
+
     # --- detail (output linh hoạt) ---------------------------------------------
 
     def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
@@ -121,6 +179,11 @@ class HandWashingStrategy(TriggerViolationStrategy):
             events.append({
                 "event_code": ev.get("event_code", ""),
                 "violation": ev.get("violation"),
+                "outcome": self._event_outcome(
+                    gt, ev,
+                    check_status=True, check_sequence=bool(expected_seq),
+                    check_counts=bool(expected_counts), exact_sequence=False,
+                ),
                 "step_accuracy": acc,
                 "steps": steps,
                 "sequence": self._check_sequence(expected_seq, ev.get("sequence", [])),
@@ -161,12 +224,8 @@ class HandWashingStrategyV2(HandWashingStrategy):
             for ev in (pred.events or [])
         )
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        exp_trig = bool(gt.expected_triggered)
-        if not bool(pred.triggered):
-            return "FN" if exp_trig else "TN"
-        status_ok = exp_trig and gt.expected_violation == bool(pred.has_violation)
-        return "TP" if (status_ok and self._sequence_ok(gt, pred)) else "FP"
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(gt, pred, check_status=True, check_sequence=True)
 
     def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
         info = super().detail(gt, pred) or {}
@@ -174,8 +233,8 @@ class HandWashingStrategyV2(HandWashingStrategy):
         info["sequence_enforced"] = True
         info["sequence_match"] = self._sequence_ok(gt, pred)
         info["status_match"] = (
-            bool(gt.expected_triggered) == bool(pred.triggered)
-            and gt.expected_violation == bool(pred.has_violation)
+                bool(gt.expected_triggered) == bool(pred.triggered)
+                and gt.expected_violation == bool(pred.has_violation)
         )
         return info
 
@@ -205,20 +264,16 @@ class HandWashingStrategyV3(HandWashingStrategy):
                 return True
         return False
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        exp_trig = bool(gt.expected_triggered)
-        if not bool(pred.triggered):
-            return "FN" if exp_trig else "TN"
-        status_ok = exp_trig and gt.expected_violation == bool(pred.has_violation)
-        return "TP" if (status_ok and self._counts_ok(gt, pred)) else "FP"
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(gt, pred, check_status=True, check_counts=True)
 
     def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
         info = super().detail(gt, pred) or {}
         info["counts_enforced"] = True
         info["counts_match"] = self._counts_ok(gt, pred)
         info["status_match"] = (
-            bool(gt.expected_triggered) == bool(pred.triggered)
-            and gt.expected_violation == bool(pred.has_violation)
+                bool(gt.expected_triggered) == bool(pred.triggered)
+                and gt.expected_violation == bool(pred.has_violation)
         )
         return info
 
@@ -236,17 +291,8 @@ class HandWashingStrategyV4(HandWashingStrategyV2, HandWashingStrategyV3):
 
     name = "hand_washing_v4"
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        exp_trig = bool(gt.expected_triggered)
-        if not bool(pred.triggered):
-            return "FN" if exp_trig else "TN"
-        ok = (
-            exp_trig
-            and gt.expected_violation == bool(pred.has_violation)
-            and self._sequence_ok(gt, pred)
-            and self._counts_ok(gt, pred)
-        )
-        return "TP" if ok else "FP"
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(gt, pred, check_status=True, check_sequence=True, check_counts=True)
 
 
 class HandWashingStrategyV5(HandWashingStrategyV4):
@@ -275,13 +321,31 @@ class HandWashingStrategyV5(HandWashingStrategyV4):
         acc = round(matched / len(results) * 100, 1) if results else None
         return results, acc
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        exp_trig = bool(gt.expected_triggered)
-        if not bool(pred.triggered):
-            return "FN" if exp_trig else "TN"
-        ok = (
-            exp_trig
-            and self._sequence_ok(gt, pred)
-            and self._counts_ok(gt, pred)
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(gt, pred, check_status=False, check_sequence=True, check_counts=True)
+
+
+class HandWashingStrategyV6(HandWashingStrategyV4):
+    """V4: chấm CẢ 3 — status (trigger+violation) + Step Sequence + count từng bước.
+
+        - không trigger -> FN (cần trigger) / TN (không cần).
+        - có trigger:
+            TP = cần trigger & violation khớp & Step Sequence khớp & count khớp.
+            FP = sai bất kỳ một trong các điều kiện trên.
+    Khác V4: sequence phải khớp CHÍNH XÁC (tập hợp bước bằng nhau), không chỉ là
+    subsequence — dùng `exact_sequence=True` khi chấm từng event.
+    """
+
+    name = "hand_washing_v6"
+
+    def _sequence_ok(self, gt: GroundTruthRecord, pred: Prediction) -> bool:
+        expected_seq = set(self._expected_sequence(gt))
+        return any(
+            expected_seq == set(ev.get("sequence", []) or [])
+            for ev in (pred.events or [])
         )
-        return "TP" if ok else "FP"
+
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return self._classify_events(
+            gt, pred, check_status=True, check_sequence=True, check_counts=True, exact_sequence=True,
+        )

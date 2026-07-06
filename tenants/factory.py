@@ -248,13 +248,13 @@ class BvCFactory(TenantFactory):
         #   v1 = trigger+violation | v2 = +Step Sequence | v3 = +count từng bước.
         from validator.hand_washing_strategy import (
             HandWashingStrategy, HandWashingStrategyV2, HandWashingStrategyV3,
-            HandWashingStrategyV4, HandWashingStrategyV5,
+            HandWashingStrategyV4, HandWashingStrategyV5, HandWashingStrategyV6,
         )
 
         variants = {
             "v1": HandWashingStrategy, "v2": HandWashingStrategyV2,
             "v3": HandWashingStrategyV3, "v4": HandWashingStrategyV4,
-            "v5": HandWashingStrategyV5,
+            "v5": HandWashingStrategyV5, "v6" : HandWashingStrategyV6,
         }
         cls = variants.get((opts.hw_strategy or "v2").lower(), HandWashingStrategyV2)
         return cls()

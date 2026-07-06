@@ -5,7 +5,11 @@ thu thập Comparison. Còn *quyết định một video đúng/sai thế nào* 
 một class -> thêm cách chấm mới = thêm 1 strategy, KHÔNG sửa lõi validator.
 
 Hợp đồng:
-  - `classify(gt, pred)` trả 'TP'|'FP'|'FN'|'TN' (để hợp với ConfusionMatrix hiện tại).
+  - `classify(gt, pred)` trả `list[str]` — MỖI PHẦN TỬ là 'TP'|'FP'|'FN'|'TN' của một
+    "đơn vị chấm". Đa số luật chỉ có 1 đơn vị/video (list 1 phần tử, vd binary/3-state
+    gộp); luật nào chấm được TỪNG EVENT riêng (vd hand-washing, 1 video có thể nhiều
+    event) thì trả 1 phần tử/event — `validate()` sẽ bump ConfusionMatrix và tạo
+    Comparison cho từng phần tử, nên FAR/Recall khi đó tính trên đơn vị EVENT.
   - `expected_label` / `predicted_label`: giá trị hiển thị trong report (bool hoặc chuỗi).
   - `detail(gt, pred)`: thông tin phụ tuỳ luật (vd số object khớp, zone, IoU) gắn vào
     Comparison cho báo cáo — mặc định None.
@@ -49,8 +53,8 @@ class ValidationStrategy(ABC):
     name: str = "base"
 
     @abstractmethod
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        """Trả 'TP'|'FP'|'FN'|'TN'."""
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        """Trả list outcome 'TP'|'FP'|'FN'|'TN', 1 phần tử/đơn vị chấm (thường 1/video)."""
         raise NotImplementedError
 
     @abstractmethod
@@ -74,8 +78,8 @@ class BinaryViolationStrategy(ValidationStrategy):
 
     name = "binary_violation"
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
-        return _confusion(gt.expected_violation, pred.has_violation)
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
+        return [_confusion(gt.expected_violation, pred.has_violation)]
 
     def expected_label(self, gt: GroundTruthRecord) -> bool | str:
         return gt.expected_violation
@@ -96,14 +100,14 @@ class TriggerViolationStrategy(ValidationStrategy):
 
     name = "trigger_violation"
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> str:
+    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
         exp_trig = bool(gt.expected_triggered)
         pred_trig = bool(pred.triggered)
         if not pred_trig:
-            return "FN" if exp_trig else "TN"
+            return ["FN"] if exp_trig else ["TN"]
         if exp_trig and gt.expected_violation == bool(pred.has_violation):
-            return "TP"
-        return "FP"
+            return ["TP"]
+        return ["FP"]
 
     def expected_label(self, gt: GroundTruthRecord) -> bool | str:
         return _state(bool(gt.expected_triggered), gt.expected_violation)

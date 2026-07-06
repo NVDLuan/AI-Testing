@@ -30,6 +30,8 @@ class Comparison:
     camera_id: str = ""
     confidence: float | None = None
     detail: dict[str, Any] | None = None  # thông tin phụ tuỳ luật (vd object/zone/IoU)
+    event_index: int = 0          # thứ tự event trong video khi 1 video > 1 outcome
+    event_count: int = 1          # tổng số outcome (event) mà video này sinh ra
 
 
 @dataclass
@@ -73,24 +75,32 @@ def validate(
             missing.append(cmp)
             continue
 
-        outcome = strat.classify(gt, pred)
-        overall.bump(outcome)
-        by_rule.setdefault(gt.rule_id or "_", ConfusionMatrix()).bump(outcome)
-        by_camera.setdefault(gt.camera_id or "_", ConfusionMatrix()).bump(outcome)
+        # 1 video -> list outcome (thường 1 phần tử; luật chấm theo event trả nhiều hơn).
+        outcomes = strat.classify(gt, pred)
+        predicted = strat.predicted_label(gt, pred)
+        detail = strat.detail(gt, pred)
+        n = len(outcomes)
 
-        comparisons.append(
-            Comparison(
-                video_id=gt.video_id,
-                video_url=gt.video_url,
-                expected=expected,
-                predicted=strat.predicted_label(gt, pred),
-                outcome=outcome,
-                rule_id=gt.rule_id,
-                camera_id=gt.camera_id,
-                confidence=pred.confidence,
-                detail=strat.detail(gt, pred),
+        for i, outcome in enumerate(outcomes):
+            overall.bump(outcome)
+            by_rule.setdefault(gt.rule_id or "_", ConfusionMatrix()).bump(outcome)
+            by_camera.setdefault(gt.camera_id or "_", ConfusionMatrix()).bump(outcome)
+
+            comparisons.append(
+                Comparison(
+                    video_id=gt.video_id,
+                    video_url=gt.video_url,
+                    expected=expected,
+                    predicted=predicted,
+                    outcome=outcome,
+                    rule_id=gt.rule_id,
+                    camera_id=gt.camera_id,
+                    confidence=pred.confidence,
+                    detail=detail,
+                    event_index=i,
+                    event_count=n,
+                )
             )
-        )
 
     return ValidationReport(
         overall=overall,

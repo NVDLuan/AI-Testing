@@ -129,12 +129,13 @@ class UpdateRuleConfigHandler(Handler):
             ctx.client.update_rule_config(rule)
 
 
-class TriggerAndWaitHandler(Handler):
+class TriggerHandler(Handler):
     """Trigger phân tích theo từng rule rồi chờ kết quả (gộp để giữ ngữ cảnh rule)."""
 
     @staticmethod
     def make_batch_code(customer: str, rule_code: str) -> str:
         return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # return f"BV C_Hygiene_20260703_090852"
 
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
@@ -143,9 +144,9 @@ class TriggerAndWaitHandler(Handler):
                 continue
             rule = rule_by_code[code]
             batch_code = self.make_batch_code(ctx.tenant.name, rule.code)
-            job_id = ctx.client.trigger(videos, rule, batch_code)
-            ctx.batch_codes[code] = job_id
-            ctx.log.info("  rule=%s: trigger job=%s", rule.name, job_id)
+            ctx.client.trigger(videos, rule, batch_code)
+            ctx.batch_codes[code] = batch_code
+            ctx.log.info("  rule=%s: trigger job=%s", rule.name, batch_code)
 
 
 class WaitHandler(Handler):
@@ -198,7 +199,13 @@ class PublishEvidenceHandler(Handler):
         customer = ctx.tenant.load_dir or ctx.tenant.name
         rule_name_by_code = {r.code: r.name for r in ctx.rules}
         published = 0
+        urls_by_video: dict[str, list[str]] = {}
         for cmp in ctx.report.comparisons:
+            # 1 video có thể sinh > 1 Comparison (1 outcome/event) -> publish evidence 1
+            # lần/video (khỏi upload trùng), rồi gắn cùng list URL cho mọi dòng của video đó.
+            if cmp.video_id in urls_by_video:
+                cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls_by_video[cmp.video_id]}
+                continue
             pred = ctx.predictions.get(cmp.video_id)
             if pred is None or not pred.events:
                 continue
@@ -208,6 +215,7 @@ class PublishEvidenceHandler(Handler):
             rule_name = rule_name_by_code.get(rule_code, rule_code)
             urls = ctx.evidence_publisher.publish(customer, batch_code, rule_name, pred.events)
             if urls:
+                urls_by_video[cmp.video_id] = urls
                 cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls}
                 published += len(urls)
         ctx.log.info("  đã publish %d evidence lên S3", published)

@@ -8,7 +8,9 @@ from .handlers import (
     LoadGroundTruthHandler,
     PublishEvidenceHandler,
     ReportHandler,
-    TriggerAndWaitHandler,
+    TriggerHandler,
+    WaitHandler,
+    GetResultsHandler,
     UpdateRuleConfigHandler,
     UploadHandler,
     ValidateHandler,
@@ -28,7 +30,9 @@ def build_default_chain(include_health: bool = True) -> Handler:
         CheckMissingHandler(),
         UploadHandler(),
         UpdateRuleConfigHandler(),   # /api/rule (generic API); hand-washing no-op
-        TriggerAndWaitHandler(),
+        TriggerHandler(),
+        WaitHandler(),
+        GetResultsHandler(),
         ValidateHandler(),
         PublishEvidenceHandler(),    # fetch evidence -> S3 -> gắn link (chỉ khi xuất HTML)
         ReportHandler(),

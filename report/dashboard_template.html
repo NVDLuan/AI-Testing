@@ -1185,6 +1185,13 @@
             border: 1px solid rgba(217, 107, 67, 0.15);
         }
 
+        /* QC Val Result: 1 video có thể có > 1 outcome (nhiều event) -> hiển thị dạng list badge */
+        .outcome-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
         .td-note {
             color: var(--text-muted);
             font-size: 0.775rem;
@@ -2751,7 +2758,9 @@
                     }
                 });
 
-                const total = cases.length;
+                // total = số VIDEO (không phải số dòng/event) -> khớp nhãn "TOTAL VIDEO TEST".
+                // Recall/FAR/Precision vẫn tính theo EVENT (tp/fp/fn/tn ở trên) như thiết kế.
+                const total = new Set(cases.map(item => item.video_name)).size;
                 const recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 1.0;
                 const far = (tp + fp) > 0 ? (fp / (tp + fp)) : 0.0;
                 const precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 1.0;
@@ -3276,6 +3285,25 @@
             renderRuleTestcases();
         }
 
+        // Gom các dòng cùng video_name (1 video có thể sinh > 1 outcome/event) thành 1 item,
+        // giữ nguyên các field chung (expect_note/actual_note/video info... giống nhau giữa các
+        // event của cùng video) + thêm mảng `outcomes` chứa TẤT CẢ detect_result của video đó.
+        function groupCasesByVideo(cases) {
+            const map = new Map();
+            cases.forEach(item => {
+                const key = item.video_name || item.test_case_id;
+                if (!map.has(key)) {
+                    map.set(key, { ...item, outcomes: [] });
+                }
+                map.get(key).outcomes.push(item.detect_result);
+            });
+            // detect_result đại diện (dùng cho modal Compare) = outcome tệ nhất nếu có.
+            map.forEach(item => {
+                item.detect_result = item.outcomes.find(o => o === 'FP' || o === 'FN' || o === 'MISSING') || item.outcomes[0];
+            });
+            return Array.from(map.values());
+        }
+
         // Render test cases in table based on filters
         function renderRuleTestcases() {
             const tableBody = document.getElementById('testcases-table-body');
@@ -3284,7 +3312,9 @@
             const batch = Object.values(reportData.details).find(b => b.rule_code === activeRuleCode);
             if (!batch) return;
 
-            const cases = batch.test_case_validation_result || [];
+            // 1 video có thể sinh > 1 dòng (1 outcome/event) -> gom lại thành 1 dòng/video,
+            // outcome hiển thị dạng LIST (mỗi event 1 badge) thay vì tách nhiều dòng trùng tên.
+            const cases = groupCasesByVideo(batch.test_case_validation_result || []);
             const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
 
             // Filter cases
@@ -3293,7 +3323,8 @@
                 const note = (item.validation_note || '').toLowerCase();
                 const actualNote = (item.actual_note || '').toLowerCase();
                 const matchedSearch = vName.includes(searchQuery) || note.includes(searchQuery) || actualNote.includes(searchQuery);
-                const matchedResult = resultFilter === 'ALL' || item.detect_result === resultFilter;
+                // Khớp filter nếu BẤT KỲ outcome nào trong list của video này == filter đang chọn.
+                const matchedResult = resultFilter === 'ALL' || item.outcomes.includes(resultFilter);
 
                 return matchedSearch && matchedResult;
             });
@@ -3316,17 +3347,21 @@
                 const expClass = item.expected_status === 'Approve' ? 'approve' : 'reject';
                 const actClass = item.actual_note && item.actual_note.includes('vi phạm') && !item.actual_note.includes('Không') ? 'approve' : 'reject';
                 const actText = item.actual_note && item.actual_note.includes('vi phạm') && !item.actual_note.includes('Không') ? 'Approve' : 'Reject';
-                const qcClass = isPassedResult(item.detect_result) ? 'passed' : 'failed';
-                const qcIcon = isPassedResult(item.detect_result) ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation';
+
+                // QC Val Result luôn hiện ĐẦY ĐỦ outcome (1 badge/event) dạng list; video chỉ
+                // có 1 outcome thì list chỉ có 1 badge, trông như trước (không đổi UI cho case cũ).
+                const outcomeBadges = item.outcomes.map(o => {
+                    const cls = isPassedResult(o) ? 'passed' : 'failed';
+                    const icon = isPassedResult(o) ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation';
+                    return `<span class="badge-result ${cls}"><i class="${icon}"></i> ${o}</span>`;
+                }).join('');
 
                 tr.innerHTML = `
                     <td class="td-id">${item.test_case_id}</td>
                     <td class="td-video" title="${item.video_name}">${item.video_name}</td>
                     <td class="td-expected">${formatNoteLines(item.expect_note) || 'N/A'}</td>
                     <td>
-                        <span class="badge-result ${qcClass}">
-                            <i class="${qcIcon}"></i> ${item.detect_result}
-                        </span>
+                        <div class="outcome-list">${outcomeBadges}</div>
                     </td>
                     <td class="td-note">
                         <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${formatNoteLines(item.actual_note) || 'N/A'}</div>

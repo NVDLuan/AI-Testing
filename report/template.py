@@ -130,7 +130,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
     # bv_c: note = Violation + tiêu chí của luật chấm (V3 -> count từng bước, còn lại ->
     # Step Sequence). detect_result/validation_note vẫn theo outcome (TP/FP/FN/TN).
     if _is_handwashing(gt):
-        if strategy in ("hand_washing_v4", "hand_washing_v5"):
+        if strategy in ("hand_washing_v4", "hand_washing_v5", "hand_washing_v6"):
             seq_e, seq_a = _handwashing_notes(gt, pred)
             cnt_e, cnt_a = _handwashing_count_notes(gt, pred)
             # gộp: 'Violation + sequence step + step count' (bỏ tiền tố 'Violation' trùng ở count).
@@ -160,6 +160,10 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
 
     return {
         "video_name": _raw_get(raw, "Video Name") or gt.video_name,
+        # 1 video có thể sinh nhiều event -> nhiều dòng test case; event_index/event_count
+        # cho biết dòng này là event thứ mấy trong tổng số event của video (0/1 nếu 1 outcome).
+        "event_index": comp.event_index if comp else 0,
+        "event_count": comp.event_count if comp else 1,
         "test_case_id": _raw_get(raw, "TC", "Test Case", "test_case_id"),
         "test_case_description": _raw_get(raw, "Test Case Description", "Short description"),
         "expected_status": _raw_get(raw, "Expected Status") or ("Approve" if gt.expected_violation else "Reject"),
@@ -189,26 +193,36 @@ def _rule_detail(ctx: "PipelineContext", rule, stamp: str, status: str) -> dict[
     version_config = tenant.config or tenant.version
     videos = ctx.videos_by_rule.get(rule.code, [])
     gt_by_id = {g.video_id: g for g in ctx.ground_truth if g.rule_id == rule.name}
-    comp_by_id = {c.video_id: c for c in (ctx.report.comparisons if ctx.report else [])}
+    # 1 video có thể sinh > 1 Comparison (1 outcome/event) -> gom theo list, không ghi đè.
+    comps_by_id: dict[str, list] = {}
+    for c in (ctx.report.comparisons if ctx.report else []):
+        comps_by_id.setdefault(c.video_id, []).append(c)
     strategy = ctx.report.strategy if ctx.report else ""
 
     rows: list[dict] = []
-    passed = failed = total_evidence = 0
+    # passed/failed/total đếm theo VIDEO (không theo event) -> khớp nhãn "TOTAL VIDEO TEST"
+    # trên dashboard; 1 video coi là "passed" chỉ khi MỌI outcome (mọi event) của nó đều
+    # TP/TN, có ít nhất 1 FP/FN/MISSING thì video đó "failed" (dù có event khác đạt).
+    passed = failed = total = total_evidence = 0
     for v in videos:
         gt = gt_by_id.get(v.video_id)
         if gt is None:
             continue
-        comp = comp_by_id.get(v.video_id)
+        comps = comps_by_id.get(v.video_id) or [None]
         pred = ctx.predictions.get(v.video_id)
-        row = _testcase_row(gt, comp, pred, version_config, strategy)
-        rows.append(row)
-        if row["detect_result"] in ("TP", "TN"):
+        # evidence đếm 1 lần/video (không nhân theo số dòng event) để khỏi trùng lặp.
+        total_evidence += len(pred.events) if pred and pred.events else 0
+        video_passed = True
+        for comp in comps:
+            row = _testcase_row(gt, comp, pred, version_config, strategy)
+            rows.append(row)
+            if row["detect_result"] not in ("TP", "TN"):
+                video_passed = False
+        total += 1
+        if video_passed:
             passed += 1
         else:
             failed += 1
-        total_evidence += len(row["json_video_evidence"])
-
-    total = len(rows)
     config = {cam_id: cam.raw for cam_id, cam in rule.cameras.items()}
     api_resp = ctx.rule_api_response.get(rule.code) or {"rule_code": rule.code, "config": config}
     uploaded = sum(1 for m in ctx.missing if m.rule_id == rule.name)

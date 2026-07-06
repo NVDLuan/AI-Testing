@@ -38,8 +38,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--job", "-j", help="Tên job (SMOKE, REGRESSION...)")
     p.add_argument("--rule", action="append", default=[], help="Lọc rule (name/code, lặp lại được)")
 
-    p.add_argument("--analysis", choices=["mock", "http"], default="mock")
-    p.add_argument("--source", choices=["fake", "gsheet", "gsheet_public"], default="fake",
+    p.add_argument("--analysis", choices=["mock", "http"], default="http")
+    p.add_argument("--source", choices=["fake", "gsheet", "gsheet_public"], default="gsheet",
                    help="fake (offline) | gsheet (riêng tư, cần --credentials) | gsheet_public (public, không cần credential)")
     p.add_argument("--api-url", default="", help="Gốc host API, vd http://103.104.122.36:8000")
     p.add_argument("--api-key", default="", help="X-API-Key (hoặc đặt env API_KEY)")
@@ -57,7 +57,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    help="Lưu video tải về vào thư mục này + tái dùng (bỏ trống = giữ RAM, không ghi đĩa)")
     p.add_argument("--recordings-dir", default="video_raw/rainscales-static-assets/qc-automation/06. AutoHygiene",
                    help="Thư mục chứa file keypoints .txt kèm video (bv_c upload cần)")
-    p.add_argument("--hw-strategy", choices=["v1", "v2", "v3", "v4", "v5"], default="v5",
+    p.add_argument("--hw-strategy", choices=["v1", "v2", "v3", "v4", "v5", "v6"], default="v6",
                    help="Luật chấm bv_c: v1 (trigger+violation) | v2 (+Step Sequence) | "
                         "v3 (+count từng bước) | v4 (cả 3) | v5 (như v4 nhưng bỏ violation)")
 
@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_health=args.skip_health,
         s3_bucket=args.s3_bucket or os.environ.get("S3_BUCKET", ""),
         s3_region=args.s3_region or os.environ.get("AWS_DEFAULT_REGION", ""),
-        s3_prefix=args.s3_prefix,
+        s3_prefix=args.s3_prefix or os.environ.get("S3_PREFIX", ""),
         s3_access_key=args.s3_access_key or os.environ.get("AWS_ACCESS_KEY_ID", ""),
         s3_secret_key=args.s3_secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
         s3_endpoint=args.s3_endpoint or os.environ.get("S3_ENDPOINT", ""),

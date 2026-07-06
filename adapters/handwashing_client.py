@@ -37,31 +37,16 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
         norm_missing = {norm_name(m) for m in resp.json().get("missing_video_names", [])}
         return [v for v in videos if norm_name(v.name) in norm_missing]
 
-    def _keypoints_path(self, video_filename: str) -> str:
-        """Đường dẫn file keypoints .txt đi kèm video (cùng tên gốc, trong recordings_dir)."""
-        base = os.path.splitext(os.path.basename(video_filename))[0]
-        return os.path.join(self._recordings_dir, f"{base}.txt")
-
     def upload(self, video: VideoRef, content: bytes | None = None, filename: str = "") -> None:
         # Endpoint nhận multipart 2 field BẮT BUỘC: 'video' (binary) + 'keypoints' (.txt).
         if not content:
             raise ValueError(f"upload {video.video_id}: thiếu nội dung video (fetch rỗng)")
         name = filename or video.name or f"{video.video_id}.mp4"
 
-        kp_path = self._keypoints_path(name)
-        if not os.path.exists(kp_path):
-            raise ValueError(
-                f"upload {video.video_id}: thiếu file keypoints {kp_path!r} "
-                f"(API yêu cầu, sinh keypoints trước rồi đặt vào {self._recordings_dir!r})"
-            )
-        with open(kp_path, "rb") as f:
-            keypoints = f.read()
-
         resp = self._session.post(
             self._url(f"{_BASE}/videos/upload"),
             files={
-                "video": (name, content, "video/mp4"),
-                "keypoints": (os.path.basename(kp_path), keypoints, "text/plain"),
+                "video": (name, content, "video/mp4")
             },
             timeout=600,
         )

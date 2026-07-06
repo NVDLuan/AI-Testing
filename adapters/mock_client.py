@@ -35,7 +35,7 @@ class MockAnalysisClient(AnalysisClient):
     def upload(self, video: VideoRef, content: bytes | None = None, filename: str = "") -> None:
         self._uploaded.add(video.video_id)
 
-    def trigger(self, videos: list[VideoRef], rule: RuleDef) -> str:
+    def trigger(self, videos: list[VideoRef], rule: RuleDef, batch_code: str) -> str:
         return f"mock-job-{rule.code or rule.name}-{len(videos)}"
 
     def _noisy(self, truth: bool) -> bool:

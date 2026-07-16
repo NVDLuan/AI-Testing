@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from validator.models import VideoRef
+from validator.strategies import default_strategy
 from validator.validator import validate
 
 from .context import PipelineContext
@@ -134,8 +135,8 @@ class TriggerHandler(Handler):
 
     @staticmethod
     def make_batch_code(customer: str, rule_code: str) -> str:
-        return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        # return f"BV C_Hygiene_20260703_090852"
+        # return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return f"BV C_Hygiene_20260709_104853"
 
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
@@ -144,7 +145,7 @@ class TriggerHandler(Handler):
                 continue
             rule = rule_by_code[code]
             batch_code = self.make_batch_code(ctx.tenant.name, rule.code)
-            ctx.client.trigger(videos, rule, batch_code)
+            # ctx.client.trigger(videos, rule, batch_code)
             ctx.batch_codes[code] = batch_code
             ctx.log.info("  rule=%s: trigger job=%s", rule.name, batch_code)
 
@@ -169,15 +170,24 @@ class GetResultsHandler(Handler):
 
 
 class ValidateHandler(Handler):
-    """So khớp prediction với ground truth -> metrics."""
+    """So khớp prediction với ground truth -> metrics.
+
+    Chạy `validate()` cho TỪNG strategy trong `ctx.strategy_chain` (rỗng -> 1 strategy
+    tự chọn theo dữ liệu), mỗi strategy 1 report riêng lưu vào `ctx.reports[name]` —
+    report coi mỗi report là 1 "rule ảo" (xem `report/template.py`).
+    """
 
     def process(self, ctx: PipelineContext) -> None:
-        ctx.report = validate(ctx.ground_truth, ctx.predictions, ctx.strategy)
-        ov = ctx.report.overall
-        ctx.log.info(
-            "  TP=%d FP=%d FN=%d TN=%d | Recall=%.3f FAR=%.3f",
-            ov.tp, ov.fp, ov.fn, ov.tn, ov.recall, ov.far,
-        )
+        chain = ctx.strategy_chain or [default_strategy(ctx.ground_truth)]
+        ctx.reports = {}
+        for strat in chain:
+            rep = validate(ctx.ground_truth, ctx.predictions, strat)
+            ctx.reports[strat.name] = rep
+            ov = rep.overall
+            ctx.log.info(
+                "  [%s] TP=%d FP=%d FN=%d TN=%d | Recall=%.3f FAR=%.3f",
+                strat.name, ov.tp, ov.fp, ov.fn, ov.tn, ov.recall, ov.far,
+            )
 
 
 class PublishEvidenceHandler(Handler):
@@ -194,30 +204,33 @@ class PublishEvidenceHandler(Handler):
         if ctx.evidence_publisher is None:
             ctx.log.info("  bỏ qua publish evidence (chưa cấu hình file-browser/S3)")
             return
-        if ctx.report is None:
+        if not ctx.reports:
             return
         customer = ctx.tenant.load_dir or ctx.tenant.name
         rule_name_by_code = {r.code: r.name for r in ctx.rules}
         published = 0
         urls_by_video: dict[str, list[str]] = {}
-        for cmp in ctx.report.comparisons:
-            # 1 video có thể sinh > 1 Comparison (1 outcome/event) -> publish evidence 1
-            # lần/video (khỏi upload trùng), rồi gắn cùng list URL cho mọi dòng của video đó.
-            if cmp.video_id in urls_by_video:
-                cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls_by_video[cmp.video_id]}
-                continue
-            pred = ctx.predictions.get(cmp.video_id)
-            if pred is None or not pred.events:
-                continue
-            # video_id = "<rule_code>/<video_name>"; batch_code lấy từ job trigger của rule.
-            rule_code = cmp.video_id.split("/", 1)[0]
-            batch_code = ctx.batch_codes.get(rule_code, rule_code)
-            rule_name = rule_name_by_code.get(rule_code, rule_code)
-            urls = ctx.evidence_publisher.publish(customer, batch_code, rule_name, pred.events)
-            if urls:
-                urls_by_video[cmp.video_id] = urls
-                cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls}
-                published += len(urls)
+        # Nhiều layer (strategy) có thể cùng nhắc tới 1 video -> urls_by_video dùng
+        # CHUNG cho mọi report để khỏi publish trùng (dedup theo video_id).
+        for rep in ctx.reports.values():
+            for cmp in rep.comparisons:
+                # 1 video có thể sinh > 1 Comparison (1 outcome/event) -> publish evidence 1
+                # lần/video (khỏi upload trùng), rồi gắn cùng list URL cho mọi dòng của video đó.
+                if cmp.video_id in urls_by_video:
+                    cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls_by_video[cmp.video_id]}
+                    continue
+                pred = ctx.predictions.get(cmp.video_id)
+                if pred is None or not pred.events:
+                    continue
+                # video_id = "<rule_code>/<video_name>"; batch_code lấy từ job trigger của rule.
+                rule_code = cmp.video_id.split("/", 1)[0]
+                batch_code = ctx.batch_codes.get(rule_code, rule_code)
+                rule_name = rule_name_by_code.get(rule_code, rule_code)
+                urls = ctx.evidence_publisher.publish(customer, batch_code, rule_name, pred.events)
+                if urls:
+                    urls_by_video[cmp.video_id] = urls
+                    cmp.detail = {**(cmp.detail or {}), "evidence_urls": urls}
+                    published += len(urls)
         ctx.log.info("  đã publish %d evidence lên S3", published)
 
 
@@ -230,7 +243,7 @@ class ReportHandler(Handler):
         # import cục bộ để tránh phụ thuộc vòng khi chỉ dùng pipeline ở nơi khác.
         from report.reporter import write_reports
 
-        aborted = ctx.aborted or ctx.report is None
+        aborted = ctx.aborted or not ctx.reports
         # 'json' và 'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
         # Khi abort thì không có kết quả -> 'json' rơi về *_ABORTED.json của write_reports.
         emit_template = (not aborted) and (
@@ -247,7 +260,7 @@ class ReportHandler(Handler):
         written = write_reports(
             title=title,
             customer_id=ctx.tenant.load_dir or ctx.tenant.name,
-            report=ctx.report,
+            reports=ctx.reports,
             output_dir=ctx.report_dir,
             formats=passthrough,
             status="aborted" if ctx.aborted else "ok",

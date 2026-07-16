@@ -36,7 +36,7 @@ def run_job(
         client=factory.create_client(tenant, opts),
         gt_source=factory.create_ground_truth_source(tenant, opts),
         video_store=factory.create_video_store(tenant, opts),
-        strategy=factory.create_validation_strategy(tenant, opts),
+        strategy_chain=factory.create_validation_chain(tenant, opts),
         evidence_publisher=factory.create_evidence_publisher(tenant, opts),
         report_formats=report_formats,
         report_dir=report_dir,

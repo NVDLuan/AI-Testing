@@ -1,4 +1,10 @@
-"""Xuất báo cáo: console + JSON + CSV."""
+"""Xuất báo cáo: console + JSON + CSV.
+
+Nhận `reports: dict[str, ValidationReport]` (khoá = tên strategy/layer, xem
+`pipeline.context.PipelineContext.reports`) thay vì 1 report duy nhất — tenant không
+dùng chain (1 phần tử, khoá bất kỳ) ra output y hệt trước đây; tenant có chain (bv_c,
+>1 phần tử) thì mỗi layer thêm 1 mục/section riêng.
+"""
 from __future__ import annotations
 
 import csv
@@ -24,14 +30,9 @@ def _matrix_line(name: str, cm: ConfusionMatrix) -> str:
     )
 
 
-def render_console(title: str, report: ValidationReport) -> str:
-    lines: list[str] = []
-    lines.append("=" * 104)
-    lines.append(f"BÁO CÁO TEST — {title}")
-    if report.strategy:
-        lines.append(f"(luật chấm: {report.strategy})")
-    lines.append("=" * 104)
-    lines.append(_matrix_line("TỔNG (overall)", report.overall))
+def _render_report_console(report: ValidationReport) -> list[str]:
+    """Các dòng ma trận/lỗi/thiếu — KHÔNG gồm dòng '(luật chấm: ...)' (caller tự thêm)."""
+    lines: list[str] = [_matrix_line("TỔNG (overall)", report.overall)]
 
     if report.by_rule:
         lines.append("-" * 104)
@@ -63,6 +64,29 @@ def render_console(title: str, report: ValidationReport) -> str:
         for c in report.missing:
             lines.append(f"  {c.video_id} ({c.video_url})")
 
+    return lines
+
+
+def render_console(title: str, reports: dict[str, ValidationReport]) -> str:
+    lines: list[str] = ["=" * 104, f"BÁO CÁO TEST — {title}"]
+
+    if len(reports) == 1:
+        (report,) = reports.values()
+        if report.strategy:
+            lines.append(f"(luật chấm: {report.strategy})")
+        lines.append("=" * 104)
+        lines.extend(_render_report_console(report))
+        lines.append("=" * 104)
+        return "\n".join(lines)
+
+    lines.append("=" * 104)
+    for name, report in reports.items():
+        lines.append("-" * 104)
+        header = f"LAYER: {name}"
+        if report.strategy:
+            header += f"  (luật chấm: {report.strategy})"
+        lines.append(header)
+        lines.extend(_render_report_console(report))
     lines.append("=" * 104)
     return "\n".join(lines)
 
@@ -127,7 +151,7 @@ def _evidence_links_html(detail: dict | None) -> str:
     return f"<ul class='ev'>{items}</ul>"
 
 
-def render_html(title: str, report: ValidationReport) -> str:
+def _render_report_html(report: ValidationReport) -> str:
     rows_overall = [("TỔNG", report.overall)]
     rules = sorted(report.by_rule.items())
     cams = sorted(report.by_camera.items())
@@ -152,12 +176,32 @@ def render_html(title: str, report: ValidationReport) -> str:
         )
     strat = f"<p class='sub'>Luật chấm: <b>{_html_escape(report.strategy)}</b></p>" if report.strategy else ""
 
+    return (
+        f"{strat}"
+        f"{_metrics_table_html('Tổng quan', rows_overall)}"
+        f"{_metrics_table_html('Theo Rule', rules) if rules else ''}"
+        f"{_metrics_table_html('Theo Camera', cams) if cams else ''}"
+        f"<h3>Chi tiết theo video ({len(report.comparisons)})</h3>"
+        f"<table>{comp_head}{''.join(comp_rows)}</table>"
+    )
+
+
+def render_html(title: str, reports: dict[str, ValidationReport]) -> str:
+    if len(reports) == 1:
+        (report,) = reports.values()
+        body = _render_report_html(report)
+    else:
+        body = "".join(
+            f"<h2>Layer: {_html_escape(name)}</h2>{_render_report_html(rep)}"
+            for name, rep in reports.items()
+        )
+
     return f"""<!DOCTYPE html>
 <html lang="vi"><head><meta charset="utf-8">
 <title>{_html_escape(title)}</title>
 <style>
  body{{font-family:system-ui,Arial,sans-serif;margin:24px;color:#1a1a1a}}
- h1{{font-size:20px}} h3{{margin-top:24px}}
+ h1{{font-size:20px}} h2{{margin-top:32px}} h3{{margin-top:24px}}
  .sub{{color:#666;margin-top:-8px}}
  table{{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}}
  th,td{{border:1px solid #ddd;padding:6px 8px;text-align:left}}
@@ -166,12 +210,7 @@ def render_html(title: str, report: ValidationReport) -> str:
  ul.ev{{margin:0;padding-left:16px}} a{{color:#0a58ca}}
 </style></head><body>
 <h1>BÁO CÁO TEST — {_html_escape(title)}</h1>
-{strat}
-{_metrics_table_html("Tổng quan", rows_overall)}
-{_metrics_table_html("Theo Rule", rules) if rules else ""}
-{_metrics_table_html("Theo Camera", cams) if cams else ""}
-<h3>Chi tiết theo video ({len(report.comparisons)})</h3>
-<table>{comp_head}{"".join(comp_rows)}</table>
+{body}
 </body></html>"""
 
 
@@ -208,10 +247,8 @@ def _abort_dict(title: str, reason: str, health: HealthStatus | None) -> dict:
     }
 
 
-def _to_dict(title: str, report: ValidationReport) -> dict:
+def _to_dict_one(report: ValidationReport) -> dict:
     return {
-        "title": title,
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
         "strategy": report.strategy,
         "overall": report.overall.as_dict(),
         "by_rule": {k: v.as_dict() for k, v in report.by_rule.items()},
@@ -233,10 +270,18 @@ def _to_dict(title: str, report: ValidationReport) -> dict:
     }
 
 
+def _to_dict(title: str, reports: dict[str, ValidationReport]) -> dict:
+    base = {"title": title, "generated_at": datetime.now().isoformat(timespec="seconds")}
+    if len(reports) == 1:
+        (report,) = reports.values()
+        return {**base, **_to_dict_one(report)}
+    return {**base, "layers": {name: _to_dict_one(rep) for name, rep in reports.items()}}
+
+
 def write_reports(
     title: str,
     customer_id: str,
-    report: ValidationReport | None,
+    reports: dict[str, ValidationReport] | None,
     output_dir: str = "reports",
     formats: list[str] | None = None,
     status: str = "ok",
@@ -245,45 +290,48 @@ def write_reports(
 ) -> dict[str, str]:
     """Sinh report theo format yêu cầu. Trả về {format: path|''}.
 
-    status != "ok" (hoặc report None) -> ghi report DỪNG (health fail), bỏ CSV.
+    status != "ok" (hoặc reports rỗng) -> ghi report DỪNG (health fail), bỏ CSV.
     """
     formats = formats or ["console"]
     written: dict[str, str] = {}
     os.makedirs(output_dir, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    aborted = status != "ok" or report is None
+    aborted = status != "ok" or not reports
     base = f"{customer_id}_{stamp}{'_ABORTED' if aborted else ''}"
 
     if "console" in formats:
-        text = render_abort_console(title, reason, health) if aborted else render_console(title, report)
+        text = render_abort_console(title, reason, health) if aborted else render_console(title, reports)
         print(text)
         written["console"] = ""
 
     if "json" in formats:
         path = os.path.join(output_dir, f"{base}.json")
-        data = _abort_dict(title, reason, health) if aborted else _to_dict(title, report)
+        data = _abort_dict(title, reason, health) if aborted else _to_dict(title, reports)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         written["json"] = path
 
     if "csv" in formats and not aborted:
         path = os.path.join(output_dir, f"{base}.csv")
+        multi = len(reports) > 1
         with open(path, "w", encoding="utf-8", newline="") as f:
             w = csv.writer(f)
             w.writerow(
-                ["video_id", "video_url", "rule_id", "camera_id",
+                ["video_id", "video_url", "layer", "rule_id", "camera_id",
                  "expected", "predicted", "outcome", "confidence"]
             )
-            for c in report.comparisons:
-                w.writerow(
-                    [c.video_id, c.video_url, c.rule_id, c.camera_id,
-                     c.expected, c.predicted, c.outcome, c.confidence]
-                )
+            for name, report in reports.items():
+                layer = name if multi else ""
+                for c in report.comparisons:
+                    w.writerow(
+                        [c.video_id, c.video_url, layer, c.rule_id, c.camera_id,
+                         c.expected, c.predicted, c.outcome, c.confidence]
+                    )
         written["csv"] = path
 
     if "html" in formats:
         path = os.path.join(output_dir, f"{base}.html")
-        html = render_abort_html(title, reason, health) if aborted else render_html(title, report)
+        html = render_abort_html(title, reason, health) if aborted else render_html(title, reports)
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)
         written["html"] = path

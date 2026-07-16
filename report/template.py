@@ -2,9 +2,15 @@
 
 Cấu trúc:
     { version_run, summary{rule_code: status}, details{batch_code: {...}} }
-Mỗi rule = 1 batch = 1 entry trong `details`, kèm `test_case_validation_result`
+Mỗi (rule, layer) = 1 batch = 1 entry trong `details`, kèm `test_case_validation_result`
 (mỗi video một dòng đúng/sai). Dựng từ `PipelineContext` (cần ctx vì có batch_code,
 timing, camera config, raw sheet... mà ValidationReport không giữ).
+
+`ctx.reports` có thể có NHIỀU strategy (chain, xem `tenants/factory.py`) — mỗi strategy
+1 report riêng. Khi 1 rule có >1 layer, mỗi layer ra 1 batch RIÊNG, đặt tên
+`"<rule.code> - <strategy.name>"` (vd "Hygiene - Trigger", "Hygiene - Violation") thay vì
+gộp chung — dashboard không cần sửa vì đã render generic theo từng entry `details{}`.
+Rule chỉ có 1 layer (mặc định linfox/EWS) giữ nguyên tên `rule.code`, không suffix.
 """
 from __future__ import annotations
 
@@ -17,12 +23,13 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pipeline.context import PipelineContext
+    from validator.validator import ValidationReport
 
 # outcome -> (expect_note, actual_note, validation_note, detect_result)
 _NOTE_BY_OUTCOME: dict[str, tuple[str, str, str, str]] = {
-    "TP": ("Phát hiện được vi phạm", "Phát hiện được vi phạm", "", "PASSED"),
+    "TP": ("Detects hand-washing behavior", "Detects hand-washing behavior", "", "PASSED"),
     "TN": ("Không có vi phạm", "Không có vi phạm", "", "PASSED"),
-    "FN": ("Phát hiện được vi phạm", "Bỏ sót vi phạm: ",
+    "FN": ("Detects hand-washing behavior", "Bỏ sót vi phạm: ",
            "Missed event", "FAILED"),
     "FP": ("Không có vi phạm", "Báo nhầm vi phạm: ",
            "Actual result differs from the expected result", "FAILED"),
@@ -94,6 +101,56 @@ def _handwashing_count_notes(gt, pred) -> tuple[str, str]:
     return expect_note, actual_note
 
 
+def _violation_cond_notes(gt, pred) -> tuple[str, str]:
+    """Note cho layer Violation & cond: nhãn Violation/No Violation + cond (count) đang
+    check — cond đổi theo GT: No Violation -> count >= 5; Violation -> count lệch expected <= 1.
+    """
+    exp_counts = _b_counts(gt.raw)
+    exp_label = "Violation" if gt.expected_violation else "No Violation"
+    cond_desc = "count lệch expected <= 1" if gt.expected_violation else "count >= 5"
+    expect_note = f"{exp_label} - cond: {cond_desc}"
+    if exp_counts:
+        expect_note += f" - step count: {_counts_kv(exp_counts)}"
+
+    if pred and pred.events:
+        act_label = "Violation" if pred.has_violation else "No Violation"
+        # gộp count theo từng step qua các event (lấy max), rồi căn theo các code expected.
+        merged: dict[str, int] = {}
+        for ev in pred.events:
+            for code, c in (ev.get("counts") or {}).items():
+                cu = str(code).strip().upper()
+                try:
+                    c = int(float(str(c)))
+                except (ValueError, TypeError):
+                    c = 0
+                merged[cu] = max(merged.get(cu, 0), c)
+        shown = {code: merged.get(code, 0) for code in exp_counts} if exp_counts else merged
+        actual_note = f"{act_label} - step count: {_counts_kv(shown)}" if shown else act_label
+    else:
+        actual_note = "No Violation"
+    return expect_note, actual_note
+
+
+def _violation_cond_reason_note(comp) -> str | None:
+    """QC note cho FN/FP ở layer Violation & cond — phân biệt LÝ DO sai theo đúng event
+    (`comp.event_index`) trong `comp.detail['events']` (gắn bởi `ViolationStrategy.detail()`):
+        - violation flag sai (không khớp GT)      -> "nhận diện sai vi phạm"
+        - violation flag khớp nhưng cond (count) sai -> "nhận diện thiếu số lần rửa tay"
+    None nếu không xác định được (thiếu detail/event) -> giữ note mặc định theo outcome.
+    """
+    detail = comp.detail or {}
+    events = detail.get("events") or []
+    if comp.event_index >= len(events):
+        return None
+    ev = events[comp.event_index]
+    violation_match = bool(ev.get("violation")) == bool(detail.get("expected_violation"))
+    if not violation_match:
+        return "incorrect identification of violation"
+    if not ev.get("cond_ok", True):
+        return "The detected handwashing steps are fewer than required"
+    return None
+
+
 def _raw_get(raw: dict, *keys: str) -> str:
     """Lấy giá trị cột sheet theo nhiều tên khả dĩ (sheet mỗi tenant đặt tên khác nhau)."""
     for k in keys:
@@ -127,24 +184,26 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
     expect_note, actual_note, validation_note, _detect = _NOTE_BY_OUTCOME.get(
         outcome, ("", "", "", "FAILED")
     )
-    # bv_c: note = Violation + tiêu chí của luật chấm (V3 -> count từng bước, còn lại ->
-    # Step Sequence). detect_result/validation_note vẫn theo outcome (TP/FP/FN/TN).
+    # bv_c: batch = 1 layer (report.strategy) -> note đúng tiêu chí của layer đó
+    # (Sequence -> Step Sequence, Count -> count từng bước, Violation & cond -> nhãn
+    # Violation/No Violation + cond count đang check). Trigger dùng note mặc định theo
+    # outcome — không có tiêu chí sequence/count/violation riêng để nói.
     if _is_handwashing(gt):
-        if strategy in ("hand_washing_v4", "hand_washing_v5", "hand_washing_v6"):
-            seq_e, seq_a = _handwashing_notes(gt, pred)
-            cnt_e, cnt_a = _handwashing_count_notes(gt, pred)
-            # gộp: 'Violation + sequence step + step count' (bỏ tiền tố 'Violation' trùng ở count).
-            expect_note = f"{seq_e} - step count: {cnt_e.split('step count: ', 1)[-1]}"
-            actual_note = f"{seq_a} - step count: {cnt_a.split('step count: ', 1)[-1]}"
-        elif strategy == "hand_washing_v3":
-            expect_note, actual_note = _handwashing_count_notes(gt, pred)
-        else:
+        if strategy == "Sequence":
             expect_note, actual_note = _handwashing_notes(gt, pred)
+        elif strategy == "Count":
+            expect_note, actual_note = _handwashing_count_notes(gt, pred)
+        elif strategy == "Violation & cond":
+            expect_note, actual_note = _violation_cond_notes(gt, pred)
+            if comp is not None and outcome in ("FN", "FP"):
+                reason_note = _violation_cond_reason_note(comp)
+                if reason_note:
+                    validation_note = reason_note
         # No Trigger: bỏ qua note step/sequence/count, chỉ hiển thị "Không trigger".
         if gt.expected_triggered is False:
-            expect_note = "Không trigger"
+            expect_note = "No Trigger"
         if not (pred and pred.events):
-            actual_note = "Không trigger"
+            actual_note = "No Trigger"
     raw = gt.raw or {}
     url_raw = _raw_get(raw, "Video Raw", "Video Name1") or gt.video_url
     # evidence đã publish lên S3 (PublishEvidenceHandler gắn vào comp.detail)
@@ -188,16 +247,19 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
     }
 
 
-def _rule_detail(ctx: "PipelineContext", rule, stamp: str, status: str) -> dict[str, Any]:
+def _rule_detail(
+        ctx: "PipelineContext", rule, stamp: str, status: str,
+        report: "ValidationReport", label: str,
+) -> dict[str, Any]:
     tenant = ctx.tenant
     version_config = tenant.config or tenant.version
     videos = ctx.videos_by_rule.get(rule.code, [])
     gt_by_id = {g.video_id: g for g in ctx.ground_truth if g.rule_id == rule.name}
     # 1 video có thể sinh > 1 Comparison (1 outcome/event) -> gom theo list, không ghi đè.
     comps_by_id: dict[str, list] = {}
-    for c in (ctx.report.comparisons if ctx.report else []):
+    for c in report.comparisons:
         comps_by_id.setdefault(c.video_id, []).append(c)
-    strategy = ctx.report.strategy if ctx.report else ""
+    strategy = report.strategy
 
     rows: list[dict] = []
     # passed/failed/total đếm theo VIDEO (không theo event) -> khớp nhãn "TOTAL VIDEO TEST"
@@ -208,7 +270,13 @@ def _rule_detail(ctx: "PipelineContext", rule, stamp: str, status: str) -> dict[
         gt = gt_by_id.get(v.video_id)
         if gt is None:
             continue
-        comps = comps_by_id.get(v.video_id) or [None]
+        comps = comps_by_id.get(v.video_id)
+        if comps is None:
+            # Layer này KHÔNG chấm video này (vd "Hygiene - Violation" khi GT không cần
+            # trigger — TriggerStrategy đã tính lỗi trigger ở layer riêng) -> bỏ qua hẳn,
+            # không tính vào total/passed/failed, KHÔNG hiển thị nhầm thành MISSING (đó là
+            # khi thật sự không có prediction, validate() vẫn tạo Comparison ở MỌI layer).
+            continue
         pred = ctx.predictions.get(v.video_id)
         # evidence đếm 1 lần/video (không nhân theo số dòng event) để khỏi trùng lặp.
         total_evidence += len(pred.events) if pred and pred.events else 0
@@ -240,12 +308,17 @@ def _rule_detail(ctx: "PipelineContext", rule, stamp: str, status: str) -> dict[
         })
 
     now = time.time()
+    # batch_code phải UNIQUE giữa các layer của cùng 1 rule thật (key trong details{}) ->
+    # thêm suffix layer khi label khác rule.code (chain >1 phần tử); rule đơn layer giữ
+    # nguyên batch_code như trước (không đổi output cho linfox/EWS).
+    real_batch_code = ctx.batch_codes.get(rule.code, f"{rule.code}_{stamp}")
+    batch_code = real_batch_code if label == rule.code else f"{real_batch_code} - {label.split(' - ', 1)[1]}"
     return {
-        "batch_code": ctx.batch_codes.get(rule.code, f"{rule.code}_{stamp}"),
+        "batch_code": batch_code,
         "timestamp": stamp,
         "tenant": tenant.name,
-        "rule_name": rule.name,
-        "rule_code": rule.code,
+        "rule_name": label,
+        "rule_code": label,
         "rule_type": rule.type,
         "tenant_dir": tenant.dir or tenant.load_dir,
         "total_testcases": total,
@@ -309,12 +382,15 @@ def build_template(ctx: "PipelineContext", stamp: str) -> dict[str, Any]:
     status = "aborted" if ctx.aborted else "success"
     summary: dict[str, str] = {}
     details: dict[str, dict] = {}
+    multi_layer = len(ctx.reports) > 1
     for rule in ctx.rules:
         if not ctx.videos_by_rule.get(rule.code):
             continue
-        detail = _rule_detail(ctx, rule, stamp, status)
-        details[detail["batch_code"]] = detail
-        summary[rule.code] = detail["status"]
+        for name, report in ctx.reports.items():
+            label = f"{rule.code} - {name}" if multi_layer else rule.code
+            detail = _rule_detail(ctx, rule, stamp, status, report, label)
+            details[detail["batch_code"]] = detail
+            summary[label] = detail["status"]
 
     return {
         "version_run": {

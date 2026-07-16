@@ -57,9 +57,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    help="Lưu video tải về vào thư mục này + tái dùng (bỏ trống = giữ RAM, không ghi đĩa)")
     p.add_argument("--recordings-dir", default="video_raw/rainscales-static-assets/qc-automation/06. AutoHygiene",
                    help="Thư mục chứa file keypoints .txt kèm video (bv_c upload cần)")
-    p.add_argument("--hw-strategy", choices=["v1", "v2", "v3", "v4", "v5", "v6"], default="v6",
-                   help="Luật chấm bv_c: v1 (trigger+violation) | v2 (+Step Sequence) | "
-                        "v3 (+count từng bước) | v4 (cả 3) | v5 (như v4 nhưng bỏ violation)")
+    p.add_argument("--hw-layers", default="trigger,violation",
+                   help="Chain luật chấm bv_c, phân tách bởi dấu phẩy — mỗi layer ra 1 "
+                        "rule ảo '<rule> - <Name>' riêng trong report. Token hợp lệ: "
+                        "trigger | violation | sequence (subsequence) | sequence_exact "
+                        "(khớp chính xác tập bước) | count")
 
     p.add_argument("--formats", nargs="+", default=["console"],
                    help="console json csv html template "
@@ -146,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         s3_endpoint=args.s3_endpoint or os.environ.get("S3_ENDPOINT", ""),
         cache_dir=args.cache_dir or os.environ.get("CACHE_DIR", "video_raw"),
         recordings_dir=args.recordings_dir,
-        hw_strategy=args.hw_strategy,
+        hw_layers=args.hw_layers,
         file_browser_url=args.file_browser_url or os.environ.get("FILE_BROWSER_URL", ""),
         file_browser_user=args.file_browser_user or os.environ.get("FILE_BROWSER_USER", ""),
         file_browser_password=args.file_browser_password or os.environ.get("FILE_BROWSER_PASSWORD", ""),
@@ -162,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
     # Exit codes (tiện CI): 2 = pipeline bị dừng (vd health fail); 1 = thiếu kết quả; 0 = ok.
     if ctx.aborted:
         return 2
-    return 1 if ctx.report and ctx.report.missing else 0
+    return 1 if any(rep.missing for rep in ctx.reports.values()) else 0
 
 
 if __name__ == "__main__":

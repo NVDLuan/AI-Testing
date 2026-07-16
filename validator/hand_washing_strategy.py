@@ -1,30 +1,32 @@
-"""HandWashingStrategy — luật chấm cho tenant bv_c (rule "Hygiene").
+"""Luật chấm bv_c (rule "Hygiene") — mỗi tiêu chí là 1 `ValidationStrategy` độc lập.
 
-OUTCOME (TP/FP/FN/TN) kế thừa nguyên `TriggerViolationStrategy` — gộp 1 ma trận theo
-trigger + violation (xem strategies.py). Phần MỚI ở đây là `detail()`: phân tích sâu
-từng bước rửa tay để đổ vào `Comparison.detail` (report JSON/HTML đọc được) — đây là
-chỗ "output linh hoạt": muốn thêm tiêu chí (thời gian, thứ tự, out-of-order...) chỉ cần
-bồi vào dict detail, không đụng tới cách tính FAR/Recall.
+Trước đây một class (`HandWashingStrategy` + `V2..V6`) gộp cả 3 tiêu chí (trigger,
+Step Sequence, count từng bước) qua đa kế thừa — thêm tiêu chí mới phải tổ hợp thêm
+class. Giờ mỗi tiêu chí là 1 strategy riêng, có `name` riêng; `tenants/factory.py` xếp
+chúng thành CHAIN theo `--hw-layers`. Mỗi strategy trong chain chạy `validate()` độc
+lập, sinh 1 `ValidationReport` riêng — report coi mỗi report này là 1 "rule ảo"
+(`"<rule_code> - <name>"`). Thêm tiêu chí mới = thêm 1 class ở đây + đăng ký trong
+`BvCFactory`, không đụng class khác.
 
-So khớp:
-  - violation : `pred event.violation` vs `gt.expected_violation` (đã quyết outcome).
-  - step count: mỗi bước B0..B6 — expected (cột B<n> trong sheet) vs actual (count từ
-    event), so theo NGƯỠNG TỰ DO 5 (cùng phía ngưỡng = đạt).
-  - sequence  : expected (cột "Step Sequence") phải là subsequence của actual; báo kèm
-    similarity (LCS) khi lệch.
+Phạm vi chấm:
+  - `TriggerStrategy` áp dụng MỌI video.
+  - `ViolationStrategy`/`SequenceStrategy`/`CountStrategy` CHỈ áp dụng khi GT cần
+    trigger VÀ model có trigger (lỗi trigger đã tính đủ ở tầng Trigger) — video ngoài
+    phạm vi này (hoặc sheet không khai dữ liệu cho tiêu chí đó) `classify()` trả `[]`;
+    `validate()` bỏ qua hoàn toàn (không Comparison, không tính vào ma trận).
 
-Nguồn dữ liệu:
-  - expected: `gt.raw` (dòng sheet) — các cột `B0..B6` (số lần) + `Step Sequence`.
-  - actual  : `pred.events` (đã chuẩn hoá ở handwashing_client._parse_event):
-    [{violation, counts{code:int}, sequence[int], duration, ...}, ...].
+Nguồn dữ liệu: expected từ `gt.raw` (cột `B0..B6`, `Step Sequence`), actual từ
+`pred.events` (chuẩn hoá ở `handwashing_client._parse_event` từ
+`detection_rule_infos[].params`) — mỗi event chấm riêng (1 video có thể nhiều lần rửa
+tay); nếu không event nào đạt thì cộng thêm 1 "FN" (bỏ sót), khớp hành vi cũ.
 """
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Callable
 
 from .models import GroundTruthRecord, Prediction
-from .strategies import TriggerViolationStrategy
+from .strategies import ValidationStrategy
 
 _COUNT_THRESHOLD = 5
 _B_COL = re.compile(r"^B\d+$", re.IGNORECASE)
@@ -35,6 +37,16 @@ def _to_int(value: Any) -> int:
         return int(float(str(value).strip()))
     except (ValueError, TypeError):
         return 0
+
+
+def _confusion(expected: bool, predicted: bool) -> str:
+    if expected and predicted:
+        return "TP"
+    if not expected and predicted:
+        return "FP"
+    if expected and not predicted:
+        return "FN"
+    return "TN"
 
 
 def _is_subsequence(needle: list[int], haystack: list[int]) -> bool:
@@ -56,13 +68,25 @@ def _lcs_ratio(expected: list[int], actual: list[int]) -> float:
     return prev[n] / m
 
 
-class HandWashingStrategy(TriggerViolationStrategy):
-    name = "hand_washing"
+def _seq_str(seq: list[int]) -> str:
+    return ",".join(str(x) for x in (seq or []))
 
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(gt, pred, check_status=True)
 
-    # --- expected từ sheet -----------------------------------------------------
+def _counts_kv(counts: dict) -> str:
+    return ",".join(f"{k}:{counts[k]}" for k in sorted(counts))
+
+
+class _HandWashingBase(ValidationStrategy):
+    """Helper dùng chung: đọc `gt.raw` (B0..B6, Step Sequence) + chấm theo từng event.
+
+    Không tự implement `classify`/`expected_label`/`predicted_label` (vẫn abstract) —
+    các strategy con dùng lại các helper này, không qua đa kế thừa.
+    """
+
+    @staticmethod
+    def _in_scope(gt: GroundTruthRecord, pred: Prediction) -> bool:
+        """Chỉ Violation/Sequence/Count mới cần gate này: GT cần trigger & model có trigger."""
+        return bool(gt.expected_triggered) and bool(pred.triggered)
 
     @staticmethod
     def _expected_counts(gt: GroundTruthRecord) -> dict[str, int]:
@@ -77,275 +101,214 @@ class HandWashingStrategy(TriggerViolationStrategy):
         raw = (gt.raw or {}).get("Step Sequence", "")
         return [int(x) for x in re.findall(r"\d+", str(raw))]
 
-    # --- checks ----------------------------------------------------------------
-
     @staticmethod
-    def _check_counts(expected: dict[str, int], actual: dict[str, Any]) -> tuple[list[dict], float | None]:
+    def _check_counts(
+            expected: dict[str, int], actual: dict[str, Any], threshold: int = _COUNT_THRESHOLD,
+    ) -> tuple[list[dict], float | None]:
         results: list[dict] = []
         matched = 0
         for code, exp in sorted(expected.items()):
             act = _to_int(actual.get(code, 0))
-            ok = (exp >= _COUNT_THRESHOLD) == (act >= _COUNT_THRESHOLD)
+            ok = (exp >= threshold) == (act >= threshold)
             matched += ok
             results.append({"step": code, "expected": exp, "actual": act, "passed": ok})
         acc = round(matched / len(results) * 100, 1) if results else None
         return results, acc
 
-    @classmethod
-    def _check_sequence(cls, expected: list[int], actual: list[int]) -> dict:
+    @staticmethod
+    def _check_sequence(expected: list[int], actual: list[int]) -> dict:
         if not expected:
             return {"expected": expected, "actual": actual, "passed": True, "similarity": 1.0}
         passed = bool(actual) and _is_subsequence(expected, actual)
         return {
-            "expected": expected,
-            "actual": actual,
-            "passed": passed,
+            "expected": expected, "actual": actual, "passed": passed,
             "similarity": round(_lcs_ratio(expected, actual), 2),
         }
 
     @staticmethod
-    def _event_violation_ok(gt: GroundTruthRecord, ev: dict) -> bool:
-        return gt.expected_violation == bool(ev.get("violation"))
-
-    def _event_sequence_ok(self, gt: GroundTruthRecord, ev: dict, *, exact: bool = False) -> bool:
-        expected_seq = self._expected_sequence(gt)
-        actual_seq = ev.get("sequence", []) or []
-        if exact:
-            return set(expected_seq) == set(actual_seq)
-        if not expected_seq:
-            return True
-        return bool(actual_seq) and _is_subsequence(expected_seq, actual_seq)
-
-    def _event_counts_ok(self, gt: GroundTruthRecord, ev: dict) -> bool:
-        expected = self._expected_counts(gt)
-        if not expected:
-            return True
-        steps, _acc = self._check_counts(expected, ev.get("counts", {}))
-        return bool(steps) and all(s["passed"] for s in steps)
-
-    def _event_outcome(
-            self, gt: GroundTruthRecord, ev: dict,
-            *, check_status: bool, check_sequence: bool, check_counts: bool, exact_sequence: bool,
-    ) -> str:
-        ok = True
-        if check_status:
-            ok = ok and self._event_violation_ok(gt, ev)
-        if check_sequence:
-            ok = ok and self._event_sequence_ok(gt, ev, exact=exact_sequence)
-        if check_counts:
-            ok = ok and self._event_counts_ok(gt, ev)
-        return "TP" if ok else "FP"
-
-    def _classify_events(
-            self, gt: GroundTruthRecord, pred: Prediction,
-            *, check_status: bool, check_sequence: bool = False, check_counts: bool = False,
-            exact_sequence: bool = False,
-    ) -> list[str]:
-        exp_trig = bool(gt.expected_triggered)
-        if not bool(pred.triggered):
-            return ["FN"] if exp_trig else ["TN"]
+    def _event_scores(pred: Prediction, ok_fn: Callable[[dict], bool]) -> list[str]:
+        """TP/FP theo từng event; không event nào đạt -> cộng thêm 1 FN (bỏ sót)."""
         if not pred.events:
             return ["FP"]  # có trigger nhưng không có event nào để chấm -> coi là sai
-        outcomes = [
-            self._event_outcome(
-                gt, ev,
-                check_status=check_status, check_sequence=check_sequence,
-                check_counts=check_counts, exact_sequence=exact_sequence,
-            )
-            for ev in pred.events
-        ]
-        if "TP" not in outcomes:
-            outcomes.append("FN")  # không event nào đạt -> cộng thêm 1 FN (bỏ sót)
+        outcomes = ["TP" if ok_fn(ev) else "FP" for ev in pred.events]
         return outcomes
 
-    # --- detail (output linh hoạt) ---------------------------------------------
 
-    def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
-        info: dict[str, Any] = {
-            "expected_state": self.expected_label(gt),
-            "predicted_state": self.predicted_label(gt, pred),
-            "expected_violation": gt.expected_violation,
-            "predicted_violation": bool(pred.has_violation),
-        }
-        if not pred.events:
-            return info  # No Trigger / không có event -> chỉ trạng thái
+class TriggerStrategy(ValidationStrategy):
+    """Tầng Trigger: chỉ chấm hệ thống CÓ trigger đúng lúc không (bỏ qua violation).
 
-        expected_counts = self._expected_counts(gt)
-        expected_seq = self._expected_sequence(gt)
-
-        events: list[dict] = []
-        for ev in pred.events:
-            steps, acc = self._check_counts(expected_counts, ev.get("counts", {}))
-            events.append({
-                "event_code": ev.get("event_code", ""),
-                "violation": ev.get("violation"),
-                "outcome": self._event_outcome(
-                    gt, ev,
-                    check_status=True, check_sequence=bool(expected_seq),
-                    check_counts=bool(expected_counts), exact_sequence=False,
-                ),
-                "step_accuracy": acc,
-                "steps": steps,
-                "sequence": self._check_sequence(expected_seq, ev.get("sequence", [])),
-                "duration": ev.get("duration"),
-            })
-        info["events"] = events
-        # tóm tắt nhiều event cho dễ đọc nhanh trong report (1 video có thể nhiều event)
-        accs = [e["step_accuracy"] for e in events if e["step_accuracy"] is not None]
-        info["num_events"] = len(events)
-        info["any_violation"] = any(bool(e["violation"]) for e in events)
-        info["step_accuracy"] = round(sum(accs) / len(accs), 1) if accs else None
-        info["sequence_ok"] = all(e["sequence"]["passed"] for e in events)
-        return info
-
-
-class HandWashingStrategyV2(HandWashingStrategy):
-    """V2: outcome dựa trên `expected_status` + `Step Sequence`.
-
-    Khác V1 (chỉ trigger + violation): V2 còn YÊU CẦU chuỗi bước khớp thì mới TP.
-        - không trigger        -> FN (cần trigger) / TN (không cần) — như V1.
-        - có trigger:
-            TP  = cần trigger & violation khớp & Step Sequence khớp.
-            FP  = có trigger nhưng SAI bất kỳ: violation sai, lẽ ra không trigger,
-                  HOẶC sequence không khớp (model bắt sai/thiếu thứ tự bước).
-    Sequence khớp = chuỗi `Step Sequence` (cột sheet) là subsequence của sequence
-    trong ÍT NHẤT một event (lenient: chỉ cần model bắt đúng ở một lần). Sheet không
-    có Step Sequence -> coi như không ràng buộc sequence (chỉ chấm theo status).
+    Áp dụng MỌI video. TP/FN/FP/TN chuẩn theo positive = có trigger.
     """
 
-    name = "hand_washing_v2"
-
-    def _sequence_ok(self, gt: GroundTruthRecord, pred: Prediction) -> bool:
-        expected_seq = self._expected_sequence(gt)
-        if not expected_seq:
-            return True  # không khai báo sequence -> bỏ qua ràng buộc này
-        return any(
-            _is_subsequence(expected_seq, ev.get("sequence", []) or [])
-            for ev in (pred.events or [])
-        )
+    name = "Trigger"
 
     def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(gt, pred, check_status=True, check_sequence=True)
+        return [_confusion(bool(gt.expected_triggered), bool(pred.triggered))]
 
-    def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
-        info = super().detail(gt, pred) or {}
-        # Phơi rõ 2 thành phần quyết định outcome của V2 để report biết vì sao TP/FP.
-        info["sequence_enforced"] = True
-        info["sequence_match"] = self._sequence_ok(gt, pred)
-        info["status_match"] = (
-                bool(gt.expected_triggered) == bool(pred.triggered)
-                and gt.expected_violation == bool(pred.has_violation)
-        )
-        return info
+    def expected_label(self, gt: GroundTruthRecord) -> bool | str:
+        return bool(gt.expected_triggered)
+
+    def predicted_label(self, gt: GroundTruthRecord, pred: Prediction) -> bool | str:
+        return bool(pred.triggered)
 
 
-class HandWashingStrategyV3(HandWashingStrategy):
-    """V3: giống V2 nhưng chấm theo COUNT từng bước thay vì Step Sequence.
+class ViolationStrategy(_HandWashingBase):
+    """Tầng Violation: mỗi event's `violation` so với `gt.expected_violation` + 1 ĐIỀU
+    KIỆN PHỤ ("cond") về count để xác nhận violation đó có đáng tin không.
 
-        - không trigger -> FN (cần trigger) / TN (không cần).
-        - có trigger:
-            TP = cần trigger & violation khớp & count từng bước khớp.
-            FP = có trigger nhưng SAI: violation sai, lẽ ra không trigger, HOẶC count
-                 của bước nào đó không khớp.
-    Count khớp = mọi bước expected (cột `B0..B6` trong sheet) cùng phía NGƯỠNG 5 với
-    count thực tế (`(exp>=5) == (act>=5)`), xét trên ÍT NHẤT một event. Sheet không khai
-    báo cột B -> không ràng buộc count (chỉ chấm theo status).
+    `cond` theo `gt.expected_violation`:
+        - GT: No Violation -> BẮT BUỘC mọi count (cột `B0..B6`) >= ngưỡng 5.
+        - GT: Violation     -> mọi count lệch expected KHÔNG QUÁ 1 (`abs(exp-act)<=1`).
+    Không khai cột B nào trong sheet -> cond coi như luôn đạt (không ràng buộc thêm,
+    giữ hành vi thuần violation như trước).
+
+    Outcome/event (ma trận chuẩn, positive = "có vi phạm"):
+        GT=Violation, violation flag khớp & cond đạt      -> TP
+        GT=Violation, violation flag khớp NHƯNG cond sai   -> FP (không tin violation này)
+        GT=Violation, violation flag KHÔNG khớp            -> FN
+        GT=No Violation, violation flag khớp & cond đạt    -> TN
+        GT=No Violation, violation flag khớp NHƯNG cond sai -> FP (không tin kết luận này)
+        GT=No Violation, violation flag KHÔNG khớp          -> FP
+    Chỉ chấm video mà GT cần trigger VÀ model có trigger — video khác `classify()`
+    trả `[]` (lỗi trigger đã tính đủ ở `TriggerStrategy`).
     """
 
-    name = "hand_washing_v3"
+    name = "Violation & cond"
 
-    def _counts_ok(self, gt: GroundTruthRecord, pred: Prediction) -> bool:
+    def _cond_ok(self, gt: GroundTruthRecord, actual_counts: dict[str, Any]) -> bool:
         expected = self._expected_counts(gt)
         if not expected:
-            return True  # không khai báo count -> bỏ qua ràng buộc này
-        for ev in (pred.events or []):
-            steps, _acc = self._check_counts(expected, ev.get("counts", {}))
-            if steps and all(s["passed"] for s in steps):
-                return True
-        return False
+            return True  # không khai cột B -> không ràng buộc cond
+        if gt.expected_violation:
+            return all(abs(exp - _to_int(actual_counts.get(code, 0))) <= 1 for code, exp in expected.items())
+        return all(_to_int(actual_counts.get(code, 0)) >= _COUNT_THRESHOLD for code in expected)
+
+    def _event_outcome(self, gt: GroundTruthRecord, ev: dict) -> str:
+        violation_match = bool(ev.get("violation")) == gt.expected_violation
+        if not violation_match:
+            return "FN" if gt.expected_violation else "FP"
+        if not self._cond_ok(gt, ev.get("counts", {})):
+            return "F" + "N" if gt.expected_violation else "F"
+        return "TP" if gt.expected_violation else "TN"
 
     def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(gt, pred, check_status=True, check_counts=True)
+        if not self._in_scope(gt, pred):
+            return []
+        if not pred.events:
+            return ["FP"]  # có trigger nhưng không có event nào để chấm -> coi là sai
+        outcomes = [self._event_outcome(gt, ev) for ev in pred.events]
+        return outcomes
+
+    def expected_label(self, gt: GroundTruthRecord) -> bool | str:
+        return gt.expected_violation
+
+    def predicted_label(self, gt: GroundTruthRecord, pred: Prediction) -> bool | str:
+        return bool(pred.has_violation)
 
     def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
-        info = super().detail(gt, pred) or {}
-        info["counts_enforced"] = True
-        info["counts_match"] = self._counts_ok(gt, pred)
-        info["status_match"] = (
-                bool(gt.expected_triggered) == bool(pred.triggered)
-                and gt.expected_violation == bool(pred.has_violation)
-        )
-        return info
+        if not self._in_scope(gt, pred):
+            return None
+        return {
+            "expected_violation": gt.expected_violation,
+            "predicted_violation": bool(pred.has_violation),
+            "cond_rule": "count >= 5" if not gt.expected_violation else "count lệch expected <= 1",
+            "events": [
+                {
+                    "event_code": ev.get("event_code", ""),
+                    "violation": ev.get("violation"),
+                    "cond_ok": self._cond_ok(gt, ev.get("counts", {})),
+                }
+                for ev in pred.events
+            ],
+        }
 
 
-class HandWashingStrategyV4(HandWashingStrategyV2, HandWashingStrategyV3):
-    """V4: chấm CẢ 3 — status (trigger+violation) + Step Sequence + count từng bước.
+class SequenceStrategy(_HandWashingBase):
+    """Tầng Sequence: chuỗi bước (`Step Sequence` trong sheet) so với `event.sequence`.
 
-        - không trigger -> FN (cần trigger) / TN (không cần).
-        - có trigger:
-            TP = cần trigger & violation khớp & Step Sequence khớp & count khớp.
-            FP = sai bất kỳ một trong các điều kiện trên.
-    Dùng lại `_sequence_ok` (V2) và `_counts_ok` (V3) qua đa kế thừa; `detail()` kế thừa
-    chuỗi nên có đủ cả `sequence_match` lẫn `counts_match`.
+    `exact=False` (mặc định): expected phải là SUBSEQUENCE của event (lenient).
+    `exact=True`: tập bước phải khớp CHÍNH XÁC.
+    Chỉ chấm khi trigger đúng phạm vi VÀ sheet có khai Step Sequence.
     """
 
-    name = "hand_washing_v4"
+    name = "Sequence"
+
+    def __init__(self, exact: bool = False) -> None:
+        self._exact = exact
+
+    def _event_ok(self, expected: list[int], actual: list[int]) -> bool:
+        if self._exact:
+            return set(expected) == set(actual)
+        return bool(actual) and _is_subsequence(expected, actual)
 
     def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(gt, pred, check_status=True, check_sequence=True, check_counts=True)
+        expected_seq = self._expected_sequence(gt)
+        if not expected_seq or not self._in_scope(gt, pred):
+            return []
+        return self._event_scores(pred, lambda ev: self._event_ok(expected_seq, ev.get("sequence", []) or []))
+
+    def expected_label(self, gt: GroundTruthRecord) -> bool | str:
+        return _seq_str(self._expected_sequence(gt))
+
+    def predicted_label(self, gt: GroundTruthRecord, pred: Prediction) -> bool | str:
+        seqs = [ev.get("sequence", []) for ev in (pred.events or []) if ev.get("sequence")]
+        return " | ".join(_seq_str(s) for s in seqs)
+
+    def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
+        expected_seq = self._expected_sequence(gt)
+        if not expected_seq or not self._in_scope(gt, pred):
+            return None
+        return {
+            "exact": self._exact,
+            "events": [
+                {
+                    "event_code": ev.get("event_code", ""),
+                    "sequence": self._check_sequence(expected_seq, ev.get("sequence", []) or []),
+                }
+                for ev in pred.events
+            ],
+        }
 
 
-class HandWashingStrategyV5(HandWashingStrategyV4):
-    """V5: như V4 (status + Step Sequence + count) nhưng KHÔNG chấm `expected_violation`.
+class CountStrategy(_HandWashingBase):
+    """Tầng Count: số lần từng bước (cột `B0..B6`) so với `event.counts`, theo NGƯỠNG.
 
-        - không trigger -> FN (cần trigger) / TN (không cần).
-        - có trigger:
-            TP = cần trigger & Step Sequence khớp & count khớp (BỎ QUA violation).
-            FP = sai bất kỳ: lẽ ra không trigger, sequence sai, HOẶC count sai.
-    Dùng khi chỉ quan tâm model bắt đúng QUY TRÌNH (thứ tự + số lần từng bước), không
-    quan tâm kết luận vi phạm có khớp ground truth hay không. `detail()` kế thừa V4 nên
-    vẫn phơi `sequence_match`/`counts_match`/`status_match`.
+    Khớp = `(expected>=threshold) == (actual>=threshold)` cho MỌI bước expected.
+    Chỉ chấm khi trigger đúng phạm vi VÀ sheet có khai ít nhất 1 cột B.
     """
 
-    name = "hand_washing_v5"
+    name = "Count"
 
-    @staticmethod
-    def _check_counts(expected: dict[str, int], actual: dict[str, Any]) -> tuple[list[dict], float | None]:
-        results: list[dict] = []
-        matched = 0
-        for code, exp in sorted(expected.items()):
-            act = _to_int(actual.get(code, 0))
-            ok = abs(exp - act) <= 1
-            matched += ok
-            results.append({"step": code, "expected": exp, "actual": act, "passed": ok})
-        acc = round(matched / len(results) * 100, 1) if results else None
-        return results, acc
+    def __init__(self, threshold: int = _COUNT_THRESHOLD) -> None:
+        self._threshold = threshold
+
+    def _event_ok(self, expected: dict[str, int], actual: dict[str, Any]) -> bool:
+        steps, _acc = self._check_counts(expected, actual, self._threshold)
+        return bool(steps) and all(s["passed"] for s in steps)
 
     def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(gt, pred, check_status=False, check_sequence=True, check_counts=True)
+        expected = self._expected_counts(gt)
+        if not expected or not self._in_scope(gt, pred):
+            return []
+        return self._event_scores(pred, lambda ev: self._event_ok(expected, ev.get("counts", {})))
 
+    def expected_label(self, gt: GroundTruthRecord) -> bool | str:
+        return _counts_kv(self._expected_counts(gt))
 
-class HandWashingStrategyV6(HandWashingStrategyV4):
-    """V4: chấm CẢ 3 — status (trigger+violation) + Step Sequence + count từng bước.
+    def predicted_label(self, gt: GroundTruthRecord, pred: Prediction) -> bool | str:
+        merged: dict[str, int] = {}
+        for ev in (pred.events or []):
+            for code, c in (ev.get("counts") or {}).items():
+                cu = str(code).strip().upper()
+                merged[cu] = max(merged.get(cu, 0), _to_int(c))
+        return _counts_kv(merged)
 
-        - không trigger -> FN (cần trigger) / TN (không cần).
-        - có trigger:
-            TP = cần trigger & violation khớp & Step Sequence khớp & count khớp.
-            FP = sai bất kỳ một trong các điều kiện trên.
-    Khác V4: sequence phải khớp CHÍNH XÁC (tập hợp bước bằng nhau), không chỉ là
-    subsequence — dùng `exact_sequence=True` khi chấm từng event.
-    """
-
-    name = "hand_washing_v6"
-
-    def _sequence_ok(self, gt: GroundTruthRecord, pred: Prediction) -> bool:
-        expected_seq = set(self._expected_sequence(gt))
-        return any(
-            expected_seq == set(ev.get("sequence", []) or [])
-            for ev in (pred.events or [])
-        )
-
-    def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:
-        return self._classify_events(
-            gt, pred, check_status=True, check_sequence=True, check_counts=True, exact_sequence=True,
-        )
+    def detail(self, gt: GroundTruthRecord, pred: Prediction) -> dict[str, Any] | None:
+        expected = self._expected_counts(gt)
+        if not expected or not self._in_scope(gt, pred):
+            return None
+        events = []
+        for ev in pred.events:
+            steps, acc = self._check_counts(expected, ev.get("counts", {}), self._threshold)
+            events.append({"event_code": ev.get("event_code", ""), "steps": steps, "step_accuracy": acc})
+        return {"events": events}

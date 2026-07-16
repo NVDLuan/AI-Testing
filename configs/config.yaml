@@ -26,7 +26,7 @@ tenants:
     jobs:
       - name: "SMOKE"
         sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
-    config: 'v2.0.0'
-    version: '2.0.0'
+    config: 'v2.1.0'
+    version: '2.1.0'
     load_dir: 'bv_c'
     dir: "bv_c"

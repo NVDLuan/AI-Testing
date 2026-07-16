@@ -87,7 +87,7 @@ class EvidencePublisher:
                     urls.append(url)
             except Exception as exc:  # noqa: BLE001 — không để 1 evidence làm hỏng report
                 log.warning("evidence ref=%s lỗi publish: %s", ref, exc)
-            # finally:
-            #     if local and os.path.exists(local):
-            #         os.remove(local)
+            finally:
+                if local and os.path.exists(local):
+                    os.remove(local)
         return urls

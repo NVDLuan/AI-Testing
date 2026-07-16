@@ -784,7 +784,7 @@
         /* Horizontal AI details metrics bar (Confusion Matrix) */
         .ai-metrics-bar {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(9, 1fr);
             padding: 16px 8px;
             border-radius: 12px;
             background: var(--surface);
@@ -861,6 +861,11 @@
         }
 
         /* Blue */
+
+        /* Teal */
+        .ai-metric-value.f1-color {
+            color: #0F766E;
+        }
 
         /* Rules Cards Grid */
         .rules-grid {
@@ -2399,6 +2404,10 @@
                         <div class="ai-metric-label">PRECISION</div>
                         <div class="ai-metric-value precision-color" id="aim-precision">0.0%</div>
                     </div>
+                    <div class="ai-metric-item">
+                        <div class="ai-metric-label">F1 SCORE</div>
+                        <div class="ai-metric-value f1-color" id="aim-f1">0.0%</div>
+                    </div>
                 </div>
 
                 <!-- Interactive Filters -->
@@ -2764,6 +2773,7 @@
                 const recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 1.0;
                 const far = (tp + fp) > 0 ? (fp / (tp + fp)) : 0.0;
                 const precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 1.0;
+                const f1 = (precision + recall) > 0 ? (2 * precision * recall / (precision + recall)) : 0.0;
 
                 ruleStatsMap[ruleCode] = {
                     total,
@@ -2773,7 +2783,8 @@
                     tn,
                     recall,
                     far,
-                    precision
+                    precision,
+                    f1
                 };
             });
         }
@@ -3237,6 +3248,7 @@
                 document.getElementById('aim-recall').textContent = `${(stats.recall * 100).toFixed(1)}%`;
                 document.getElementById('aim-far').textContent = `${(stats.far * 100).toFixed(1)}%`;
                 document.getElementById('aim-precision').textContent = `${(stats.precision * 100).toFixed(1)}%`;
+                document.getElementById('aim-f1').textContent = `${(stats.f1 * 100).toFixed(1)}%`;
             }
 
             // Reset Filter Buttons

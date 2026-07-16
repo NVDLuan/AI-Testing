@@ -28,7 +28,10 @@ class PipelineContext:
     video_store: VideoStore
     report_formats: list[str] = field(default_factory=lambda: ["console"])
     report_dir: str = "reports"
-    strategy: ValidationStrategy | None = None  # None = validator tự chọn theo dữ liệu
+    # Rỗng = validator tự chọn 1 strategy theo dữ liệu (default_strategy), không suffix
+    # tên rule. >1 phần tử = mỗi strategy 1 report riêng, report coi là 1 "rule ảo"
+    # "<rule> - <strategy.name>" (xem ValidateHandler + report/template.py).
+    strategy_chain: list[ValidationStrategy] = field(default_factory=list)
     evidence_publisher: EvidencePublisher | None = None  # None = không publish evidence
     waiting: WaitingBase = None
     # Tích luỹ qua các bước
@@ -36,7 +39,7 @@ class PipelineContext:
     videos_by_rule: dict[str, list[VideoRef]] = field(default_factory=dict)
     missing: list[VideoRef] = field(default_factory=list)
     predictions: dict[str, Prediction] = field(default_factory=dict)
-    report: ValidationReport | None = None
+    reports: dict[str, ValidationReport] = field(default_factory=dict)  # key = strategy.name
     batch_codes: dict[str, str] = field(default_factory=dict)  # rule.code -> batch_code (trigger)
     rule_api_response: dict[str, dict] = field(default_factory=dict)  # rule.code -> phản hồi /api/rule
     started_at: float = 0.0  # epoch lúc bắt đầu run (cho timing trong report template)

@@ -35,7 +35,7 @@ video, lõi chỉ lo gom ma trận → thêm cách verify mới = thêm 1 class.
 |---|---|---|
 | `BinaryViolationStrategy` | linfox, EWS | có/không vi phạm (boolean) |
 | `TriggerViolationStrategy` | bv_c (base) | 3-trạng-thái: No Trigger / Trigger-No Violation / Trigger-Violation (1 ma trận gộp) |
-| `HandWashingStrategy*` | bv_c | xem [Luật chấm bv_c](#luật-chấm-bv_c-hand-washing) |
+| `TriggerStrategy`/`ViolationStrategy`/`SequenceStrategy`/`CountStrategy` | bv_c | chain, xem [Luật chấm bv_c](#luật-chấm-bv_c-hand-washing) |
 
 ## Cấu hình (3 tầng)
 
@@ -156,18 +156,33 @@ Thiếu cấu hình → bỏ qua êm (HTML vẫn ra, không link); log warning n
 
 ### Luật chấm bv_c (hand-washing)
 
-`--hw-strategy {v1,v2,v3,v4}` (mặc định `v2`):
+Mỗi tiêu chí là 1 `ValidationStrategy` ĐỘC LẬP (`validator/hand_washing_strategy.py`),
+có `name` riêng, xếp thành **chain** qua `--hw-layers` (chuỗi token phân tách bởi dấu
+phẩy, mặc định CLI `trigger,violation` — `RunOptions.hw_layers` khi dựng trực tiếp
+mặc định đủ 4 layer `trigger,violation,sequence_exact,count`):
 
-| | Outcome = |
-|---|---|
-| `v1` | trigger + violation |
-| `v2` | + **Step Sequence** khớp (subsequence của ≥1 event) |
-| `v3` | + **count từng bước** khớp (cột `B0..B6` cùng phía ngưỡng 5) |
-| `v4` | **cả 3** (status + sequence + count) |
+| Token | Class | Outcome | Phạm vi |
+|---|---|---|---|
+| `trigger` | `TriggerStrategy` | có/không trigger đúng lúc | mọi video |
+| `violation` | `ViolationStrategy` | `event.violation` so với GT **+ 1 điều kiện phụ (`cond`) về count** | chỉ video GT cần trigger & model có trigger |
+| `sequence` | `SequenceStrategy(exact=False)` | `Step Sequence` là subsequence của event | như trên + sheet có khai Step Sequence |
+| `sequence_exact` | `SequenceStrategy(exact=True)` | tập bước khớp CHÍNH XÁC | như trên |
+| `count` | `CountStrategy` | mọi cột `B0..B6` cùng phía ngưỡng 5 | như trên + sheet có khai cột B |
 
-Sai bất kỳ tiêu chí đang bật → FP. `Comparison.detail` chứa phân tích sâu (step/sequence/
-count/duration) → đổ vào report JSON/HTML. Note trong template tự đổi theo luật
-(`Violation: T/F - sequence step: …` / `- step count: B1:5,…`).
+`ViolationStrategy` chấm theo ma trận chuẩn (positive = có vi phạm) NHƯNG violation flag
+khớp GT vẫn có thể bị hạ thành **FP** nếu `cond` (count) không xác nhận: GT **No
+Violation** đòi mọi count (`B0..B6`) `>= 5`; GT **Violation** đòi mọi count lệch expected
+`<= 1`. Không khai cột B nào -> `cond` coi như luôn đạt (chỉ chấm theo violation flag).
+
+Mỗi strategy trong chain chạy `validate()` riêng, sinh 1 `ValidationReport` riêng —
+report coi mỗi cái là **1 "rule ảo"**, tên `"<rule_code> - <Name>"` (vd
+`"Hygiene - Trigger"`, `"Hygiene - Violation"`) — mỗi batch/entry riêng trong
+`test_results_*.json` (`details{}`/`summary{}`), dashboard không cần sửa vì đã render
+generic theo từng entry. Video ngoài phạm vi một layer thì layer đó bỏ qua hẳn (không
+tính vào total/pass-fail của layer, không hiện MISSING). Thêm tiêu chí mới = thêm 1
+class + đăng ký token trong `BvCFactory.create_validation_chain`, không sửa layer khác.
+Tenant chỉ 1 strategy (linfox/EWS, `--hw-layers` không áp dụng) giữ nguyên tên rule,
+không suffix.
 
 ## Cấu trúc
 

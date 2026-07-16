@@ -113,7 +113,7 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
         — xử lý cả hai. Video không có event nào = "No Trigger".
         """
         by_video: dict[str, list[dict]] = {}
-        page, page_size = 1, 200
+        page, page_size = 1, 300
         # while True:
         #     resp = self._session.get(
         #         self._url(f"{_BASE}/events"),

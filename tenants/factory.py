@@ -54,7 +54,9 @@ class RunOptions:
     s3_endpoint: str = ""
     cache_dir: str = ""  # rỗng = giữ RAM; có giá trị = lưu video xuống đĩa + tái dùng
     recordings_dir: str = ""
-    hw_strategy: str = "v2"  # bv_c: v1 (trigger+viol) | v2 (+sequence) | v3 (+count)
+    # bv_c: danh sách layer (validate strategy) phân tách bởi dấu phẩy, xem
+    # BvCFactory.create_validation_chain — trigger | violation | sequence | sequence_exact | count.
+    hw_layers: str = "trigger,violation,sequence_exact,count"
     sheet_columns: dict[str, str] = field(default_factory=dict)
     # Evidence -> S3 -> report HTML
     file_browser_url: str = ""
@@ -118,15 +120,19 @@ class TenantFactory:
             cache_dir=opts.cache_dir,
         )
 
-    def create_validation_strategy(
+    def create_validation_chain(
             self, tenant: TenantConfig, opts: RunOptions
-    ) -> ValidationStrategy | None:
-        """Luật chấm điểm cho tenant. None = để validator tự chọn theo dữ liệu
-        (binary nếu nhãn boolean, 3-state nếu có expected_triggered).
+    ) -> list[ValidationStrategy]:
+        """Chain luật chấm điểm cho tenant — mỗi phần tử chạy `validate()` riêng, sinh
 
-        Override khi cần cách chấm riêng (vd verify detection): trả về strategy cụ thể.
+        1 report riêng (report coi mỗi report là 1 "rule ảo" `<rule> - <strategy.name>`).
+        Rỗng = để pipeline tự chọn 1 strategy duy nhất theo dữ liệu (`default_strategy`,
+        binary nếu nhãn boolean, 3-state nếu có `expected_triggered`) — rule không bị
+        đổi tên/suffix, giữ nguyên hành vi hiện tại (linfox/EWS).
+
+        Override khi cần cách chấm riêng (vd nhiều tiêu chí như bv_c): trả về chain cụ thể.
         """
-        return None
+        return []
 
     def create_evidence_publisher(self, tenant: TenantConfig, opts: RunOptions):
         """Dựng EvidencePublisher (file-browser fetch -> S3 public upload) cho report HTML.
@@ -243,21 +249,28 @@ class BvCFactory(TenantFactory):
         # Upload hand-washing cần kèm file keypoints .txt -> trỏ thư mục recordings.
         return {"recordings_dir": opts.recordings_dir}
 
-    def create_validation_strategy(self, tenant: TenantConfig, opts: RunOptions):
-        # Chọn luật chấm bv_c theo --hw-strategy:
-        #   v1 = trigger+violation | v2 = +Step Sequence | v3 = +count từng bước.
+    def create_validation_chain(self, tenant: TenantConfig, opts: RunOptions) -> list[ValidationStrategy]:
+        # Chain layer theo --hw-layers (vd "trigger,violation,sequence,count"). Mỗi layer
+        # chạy validate() riêng -> report riêng -> report ra 1 rule ảo "<rule> - <Name>".
         from validator.hand_washing_strategy import (
-            HandWashingStrategy, HandWashingStrategyV2, HandWashingStrategyV3,
-            HandWashingStrategyV4, HandWashingStrategyV5, HandWashingStrategyV6,
+            CountStrategy, SequenceStrategy, TriggerStrategy, ViolationStrategy,
         )
 
-        variants = {
-            "v1": HandWashingStrategy, "v2": HandWashingStrategyV2,
-            "v3": HandWashingStrategyV3, "v4": HandWashingStrategyV4,
-            "v5": HandWashingStrategyV5, "v6" : HandWashingStrategyV6,
+        layer_factories: dict[str, Callable[[], ValidationStrategy]] = {
+            "trigger": TriggerStrategy,
+            "violation": ViolationStrategy,
+            "sequence": lambda: SequenceStrategy(exact=False),
+            "sequence_exact": lambda: SequenceStrategy(exact=True),
+            "count": CountStrategy,
         }
-        cls = variants.get((opts.hw_strategy or "v2").lower(), HandWashingStrategyV2)
-        return cls()
+        tokens = [t.strip().lower() for t in (opts.hw_layers or "").split(",") if t.strip()]
+        unknown = [t for t in tokens if t not in layer_factories]
+        if unknown:
+            raise ValueError(
+                f"--hw-layers có token không hợp lệ: {unknown!r} "
+                f"(hợp lệ: {sorted(layer_factories)})"
+            )
+        return [layer_factories[t]() for t in tokens]
 
     def create_ground_truth_source(
             self, tenant: TenantConfig, opts: RunOptions

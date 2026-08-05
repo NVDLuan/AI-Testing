@@ -65,7 +65,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     p.add_argument("--formats", nargs="+", default=["console"],
                    help="console json csv html template "
-                        "(json/template đều ra file test_results_*.json theo mẫu QC)")
+                        "(json/template/html đều dùng chung 1 schema QC test_results_*.json; "
+                        "html luôn nạp schema đó vào dashboard, không cần kèm json)")
     p.add_argument("--report-dir", default="reports")
 
     # Evidence video -> S3 -> link trong report HTML
@@ -108,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()  # nạp secret từ .env trước khi đọc os.environ
     args = parse_args(argv if argv is not None else sys.argv[1:])
     logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
+        level=logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
     )
 
@@ -134,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     opts = RunOptions(
         analysis=args.analysis,
         source=args.source or 'gsheet_public',
-        api_url=args.api_key or os.environ.get("AGENT_API", ""),
+        api_url=args.api_url or os.environ.get("AGENT_API", ""),
         api_key=args.api_key or os.environ.get("API_KEY", ""),
         credentials=args.credentials or 'configs/service-google-sheet.json',
         poll_interval_sec=args.poll_interval,
@@ -158,6 +159,13 @@ def main(argv: list[str] | None = None) -> int:
         s3_public_base=args.s3_public_base or os.environ.get("S3_PUBLIC_BASE", ""),
         waiting_time=os.environ.get("TIME_WAITING", ""),
         kafka_watcher_api_url=os.environ.get("KAFKA_WATCHER_API_URL", ""),
+        grafana_url=os.environ.get("GRAFANA_URL", ""),
+        grafana_username=os.environ.get("GRAFANA_USERNAME", ""),
+        grafana_password=os.environ.get("GRAFANA_PASSWORD", ""),
+        grafana_server_name=os.environ.get("GRAFANA_SERVER_NAME", ""),
+        grafana_service_name=os.environ.get("GRAFANA_SERVICE_NAME", ""),
+        grafana_target_logs=os.environ.get("GRAFANA_TARGET_LOGS", ""),
+        grafana_poll_interval_sec=float(os.environ.get("GRAFANA_POLL_INTERVAL_SEC", "120")),
     )
 
     ctx = run_job(loader, tenant, job, rules, opts, args.formats, args.report_dir)

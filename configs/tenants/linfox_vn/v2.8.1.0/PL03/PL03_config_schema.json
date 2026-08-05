@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PL03 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "is_normalized": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the cam_zones coordinates are normalized (0.0-1.0) or absolute pixel values.",
+      "ui:section": "advanced"
+    },
+    "max_miss": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of processing frames the tracker keeps a lost ID before discarding. Wall-clock seconds = max_miss / (fps / frame_interval).",
+      "ui:section": "advanced"
+    },
+    "fps": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Frames per second of the camera stream, used to convert frame_id to seconds.",
+      "ui:section": "advanced"
+    },
+    "cam_resolution": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Camera resolution [width, height].",
+      "ui:section": "advanced"
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Each point is [x, y] (normalized if is_normalized=true)."
+        }
+      },
+      "ui:section": "zone"
+    },
+    "walking_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Each point is [x, y] (normalized if is_normalized=true)."
+        }
+      },
+      "ui:section": "zone"
+    },
+    "violent_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum stationary seconds before firing (main threshold).",
+      "ui:section": "advanced"
+    },
+    "near_violation_window": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 60,
+      "description": "Seconds to wait for near-violation pallets that will violate soon before emitting an event.",
+      "ui:section": "advanced"
+    },
+    "max_wait_time": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 2700,
+      "description": "Maximum batching time in seconds before forcing the violation report to be sent.",
+      "ui:section": "advanced"
+    },
+    "heartbeat_interval": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 60,
+      "description": "Interval in seconds between heartbeat summary logs of pallets on floor.",
+      "ui:section": "advanced"
+    },
+    "realert_interval": {
+      "type": "integer",
+      "minimum": -1,
+      "description": "Seconds to wait before re-alerting on a previously reported violation (-1 disables).",
+      "ui:section": "advanced"
+    },
+    "reported_region_expiry": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Seconds a reported-pallet dedup region is kept for adopting a re-acquired track on the same spot before it ages out. Defaults to violent_count. The region is also cleared immediately when its own track moves off the spot.",
+      "ui:section": "advanced"
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.3,
+      "description": "Detections with confidence below this are dropped before tracking (0 disables). Default 0.3 filters noisy low-confidence detections.",
+      "ui:section": "advanced"
+    },
+    "walking_zone_pallet_ioa": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Walking-zone check for pallet (flat, bbox ~= floor footprint). 0 (default) checks a single bottom-center point; >0 requires this fraction of the whole bbox area inside a walking_zone (1.0 = fully inside). Cuts false positives from pallets only clipping a zone edge.",
+      "ui:section": "advanced"
+    },
+    "walking_zone_overlap_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Walking-zone check for product_package (tall, only its base touches the floor). 0 (default) checks a single bottom-center point; >0 requires this fraction of the bbox's bottom base_height_fraction slice area inside a walking_zone. Cuts false positives from tall bboxes clipping narrow/jagged walking_zones.",
+      "ui:section": "advanced"
+    },
+    "walking_zone_base_height_fraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.25,
+      "description": "Fraction of the product_package bbox height (from the bottom) used as its floor-contact base slice for walking_zone_overlap_ratio. Default 0.25.",
+      "ui:section": "advanced"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Detector classes accumulated as pallet/package observations.",
+      "ui:section": "advanced"
+    }
+  },
+  "required": [
+    "is_normalized",
+    "max_miss",
+    "fps",
+    "cam_resolution",
+    "cam_zones",
+    "walking_zones",
+    "violent_count",
+    "realert_interval",
+    "target_class"
+  ],
+  "additionalProperties": false
+}

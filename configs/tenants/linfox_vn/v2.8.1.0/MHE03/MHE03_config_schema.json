@@ -1,0 +1,159 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MHE03 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "fps": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Camera ingest FPS. Used to derive per-detection timestamp (startTime + frame_id/fps) for speed regression and evidence timing.",
+          "ui:section": "advanced"
+        },
+        "max_miss": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "warning_interval": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+          "ui:section": "advanced"
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        },
+        "intersection": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            },
+          "ui:section": "zone"
+        },
+        "min_detection": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "event_confidence_alpha": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "event_confidence_beta": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "event_confidence_gamma": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "medium_speed": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "image_points": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0},
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+            },
+            "description": "4 điểm ảnh (pixel) để dựng homography tính vận tốc km/h. Bỏ trống -> dùng vận tốc pixel cũ.",
+          "ui:section": "advanced"
+        },
+        "real_points": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {"type": "number", "minimum": 0},
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "4 điểm thực (mét) tương ứng image_points."
+            },
+          "ui:section": "advanced"
+        },
+        "speed_window": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "Số frame hồi quy vận tốc km/h.",
+          "ui:section": "advanced"
+        },
+        "min_speed_kmh": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Ngưỡng km/h: qua vạch mà vận tốc > ngưỡng này là vi phạm.",
+          "ui:section": "advanced"
+        },
+        "not_decel_slope": {
+            "type": "number",
+            "description": "Ngưỡng độ dốc vận tốc: slope >= ngưỡng coi là KHÔNG giảm tốc (mặc định 0).",
+          "ui:section": "advanced"
+        },
+        "near_line_m": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Khoảng cách thực (mét) tới vạch để coi là 'có MHE khác gần vạch'. Không có MHE khác trong bán kính này -> không tính vi phạm.",
+          "ui:section": "advanced"
+        },
+        "stop_kmh": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Ngưỡng km/h coi là 'dừng' khi phát hiện nhịp dừng trước giao lộ.",
+          "ui:section": "advanced"
+        },
+        "stop_min_frames": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Số frame vận tốc ~0 liên tiếp = 1 nhịp dừng (đủ để miễn vi phạm).",
+          "ui:section": "advanced"
+        },
+        "stop_lookback": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Cửa sổ lịch sử (frame) để tìm nhịp dừng trước lúc cắt vạch.",
+          "ui:section": "advanced"
+        },
+        "ideal_speed": {
+            "type": "number",
+            "description": "Tốc độ lý tưởng dùng trong tính confidence (theo đơn vị vận tốc của camera).",
+          "ui:section": "advanced"
+        }
+    },
+    "required": [
+        "fps",
+        "max_miss",
+        "warning_interval",
+        "cam_resolution",
+        "target_class",
+        "intersection",
+        "min_detection",
+        "event_confidence_alpha",
+        "event_confidence_beta",
+        "event_confidence_gamma",
+        "medium_speed"
+    ],
+    "additionalProperties": true
+}

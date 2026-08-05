@@ -62,12 +62,20 @@ class RunOptions:
     file_browser_url: str = ""
     file_browser_user: str = ""
     file_browser_password: str = ""
-    evidence_field: str = "evidence_path"
+    evidence_field: str = "evidence"
     report_s3_bucket: str = ""  # mặc định tái dùng s3_bucket
     report_s3_prefix: str = "reports/evidence"
     s3_public_base: str = ""  # domain/CloudFront công khai (tuỳ chọn)
     waiting_time: str = ""
     kafka_watcher_api_url: str = ""
+    # Chờ AI rảnh qua log Loki (Grafana) — dùng cho ews_usa, xem WaitingGrafana.
+    grafana_url: str = ""
+    grafana_username: str = ""
+    grafana_password: str = ""
+    grafana_server_name: str = ""
+    grafana_service_name: str = ""
+    grafana_target_logs: str = ""  # phân tách dấu phẩy, rỗng = EwsUsaFactory tự áp mặc định
+    grafana_poll_interval_sec: float = 120.0
 
 
 class TenantFactory:
@@ -208,6 +216,24 @@ def get_factory(tenant: TenantConfig) -> TenantFactory:
     return _REGISTRY.get(tenant.load_dir, TenantFactory)()
 
 
+def _build_grafana_waiting(opts: RunOptions):
+    """Dựng `WaitingGrafana` từ `RunOptions` — dùng chung cho các tenant cần chờ qua
+    log Loki (Grafana), tránh lặp lại parse `grafana_target_logs` ở từng factory.
+    """
+    from adapters.waiting import WaitingGrafana
+
+    target_logs = [s.strip() for s in opts.grafana_target_logs.split(",") if s.strip()]
+    return WaitingGrafana(
+        base_url=opts.grafana_url,
+        username=opts.grafana_username,
+        password=opts.grafana_password,
+        server_name=opts.grafana_server_name,
+        service_name=opts.grafana_service_name,
+        target_logs=target_logs or ["[BOOT] No config message yet, still waiting..."],
+        poll_interval=int(opts.grafana_poll_interval_sec),
+    )
+
+
 # --- Ví dụ override cho một tenant ------------------------------------------
 
 
@@ -232,6 +258,34 @@ class LinfoxVNFactory(TenantFactory):
     def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
         from adapters.waiting import WaitingKafka
         return WaitingKafka(opts.kafka_watcher_api_url)
+
+
+@register("karter_school")
+class KarterSchoolFactory(LinfoxVNFactory):
+    """Karter School: dùng chung workflow Linfox VN (generic API + map cột sheet) —
+    khác data (rules/cameras/sheet riêng ở `configs/tenants/karter_school/`) và khác
+    cách chờ: cần CẢ Kafka lag=0 LẪN log Loki idle (`WaitingParallel`, chạy đồng thời,
+    AND — xem `adapters.waiting.WaitingParallel`). Đăng ký factory riêng (thay vì gắn
+    thêm `@register` lên `LinfoxVNFactory`) để dễ theo dõi và tách hành vi sau này mà
+    không đụng linfox_vn.
+    """
+
+    def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
+        from adapters.waiting import WaitingKafka, WaitingParallel
+        opts.grafana_target_logs = "[DONE] STAGE 1/3 (ds-app, detection) FINISHED ALL"
+
+        return WaitingParallel([
+            WaitingKafka(opts.kafka_watcher_api_url),
+            _build_grafana_waiting(opts),
+        ])
+
+
+@register("ews_usa")
+class EwsUsaFactory(TenantFactory):
+    """EWS USA: chờ AI rảnh qua log Loki (Grafana) thay vì Kafka lag."""
+
+    def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
+        return _build_grafana_waiting(opts)
 
 
 @register("bv_c")

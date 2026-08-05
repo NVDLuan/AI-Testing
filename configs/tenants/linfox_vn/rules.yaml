@@ -4,67 +4,67 @@ rules:
     sheet: 'USEPHONE'
     type: 'SHORT'
     time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_USEPHONE_20260210_160428'
+    batch_debug: ["linfox_Viet_Nam_USEPHONE_20260706_133909"]
 
-  - name: 'NWALKWAY'
-    code: 'HM05'
-    sheet: 'NWALKWAY'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_NWALKWAY_20260116_090549'
+#  - name: 'NWALKWAY'
+#    code: 'HM05'
+#    sheet: 'NWALKWAY'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: 'linfox_Viet_Nam_NWALKWAY_20260706_133909'
 
-  - name: 'MCROSSR'
-    code: 'MHE03'
-    sheet: 'MCROSSR'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_MCROSSR_20260116_090549'
+#  - name: 'MCROSSR'
+#    code: 'MHE03'
+#    sheet: 'MCROSSR'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: 'linfox_Viet_Nam_MCROSSR_20260706_133909'
+#
+#  - name: 'COLLISION'
+#    code: 'MHE01'
+#    sheet: 'COLLISION'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: ['linfox_Viet_Nam_COLLISION_20260706_133909']
+#
+#  - name: 'MOV8PALLETS'
+#    code: 'MHE04'
+#    sheet: 'MOV8PALLETS'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: 'linfox_Viet_Nam_MOV8PALLETS_20260706_133909'
+#
+#  - name: 'LOADHIGH'
+#    code: 'MHE10'
+#    sheet: 'LOADHIGH'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: 'linfox_Viet_Nam_LOADHIGH_20260706_133909'
+#
+#  - name: 'SIT2M'
+#    code: 'HM07'
+#    sheet: 'SIT2M'
+#    type: 'SHORT'
+#    time_sleep: 10
+#    batch_debug: 'linfox_Viet_Nam_SIT2M_20260706_133909'
 
-  - name: 'COLLISION'
-    code: 'MHE01'
-    sheet: 'COLLISION'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_COLLISION_20260116_090549'
-
-  - name: 'MOV8PALLETS'
-    code: 'MHE04'
-    sheet: 'MOV8PALLETS'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_MOV8PALLETS_20260116_090549'
-
-  - name: 'LOADHIGH'
-    code: 'MHE10'
-    sheet: 'LOADHIGH'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_LOADHIGH_20260116_090549'
-
-  - name: 'SIT2M'
-    code: 'HM07'
-    sheet: 'SIT2M'
-    type: 'LONG'
-    time_sleep: 10
-    batch_debug: 'linfox_Viet_Nam_SIT2M_20260506_150844'
-
-  - name: 'PALLETONF'
-    code: 'PL02'
-    sheet: 'PALLETONF'
-    type: 'LONG'
-    time_sleep: 170
-    batch_debug: ''
-
-  - name: 'PALLETWRONG'
-    code: 'PL03'
-    sheet: 'PALLETWRONG'
-    type: 'LONG'
-    time_sleep: 10
-    batch_debug: 'Linfox_Viet_Nam_PALLETWRONG_20260116_090549'
-
-  - name: 'ALCOHOLTEST'
-    code: 'OTH02'
-    sheet: 'ALCOHOLTEST'
-    type: 'SHORT'
-    time_sleep: 7
-    batch_debug: 'Linfox_Viet_Nam_ALCOHOLTEST_20260116_090549'
+#  - name: 'PALLETONF'
+#    code: 'PL02'
+#    sheet: 'PALLETONF'
+#    type: 'LONG'
+#    time_sleep: 170
+#    batch_debug: ''
+#
+#  - name: 'PALLETWRONG'
+#    code: 'PL03'
+#    sheet: 'PALLETWRONG'
+#    type: 'LONG'
+#    time_sleep: 10
+#    batch_debug: 'Linfox_Viet_Nam_PALLETWRONG_20260626_092315'
+#
+#  - name: 'ALCOHOLTEST'
+#    code: 'OTH02'
+#    sheet: 'ALCOHOLTEST'
+#    type: 'SHORT'
+#    time_sleep: 7
+#    batch_debug: 'linfox_Viet_Nam_ALCOHOLTEST_20260706_133909'

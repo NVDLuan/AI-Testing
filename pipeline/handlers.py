@@ -135,8 +135,8 @@ class TriggerHandler(Handler):
 
     @staticmethod
     def make_batch_code(customer: str, rule_code: str) -> str:
-        # return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        return f"BV C_Hygiene_20260709_104853"
+        return f"{customer.replace(' ', '_')}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # return f"BV C_Hygiene_20260709_104853"
 
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
@@ -145,7 +145,7 @@ class TriggerHandler(Handler):
                 continue
             rule = rule_by_code[code]
             batch_code = self.make_batch_code(ctx.tenant.name, rule.code)
-            # ctx.client.trigger(videos, rule, batch_code)
+            ctx.client.trigger(videos, rule, batch_code)
             ctx.batch_codes[code] = batch_code
             ctx.log.info("  rule=%s: trigger job=%s", rule.name, batch_code)
 
@@ -244,10 +244,16 @@ class ReportHandler(Handler):
         from report.reporter import write_reports
 
         aborted = ctx.aborted or not ctx.reports
-        # 'json' và 'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
-        # Khi abort thì không có kết quả -> 'json' rơi về *_ABORTED.json của write_reports.
+        # 'json'/'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
+        # 'html' LUÔN dùng dashboard dựng từ schema QC này (không còn phụ thuộc phải
+        # kèm 'json'/'template' trong --formats) -> đây là đường HTML chuẩn duy nhất
+        # cho lượt chạy thành công; đường HTML bảng đơn giản cũ chỉ còn dùng khi ABORT
+        # (không có comparison để dựng dashboard). Khi abort thì không có kết quả ->
+        # 'json' rơi về *_ABORTED.json của write_reports.
         emit_template = (not aborted) and (
-                "template" in ctx.report_formats or "json" in ctx.report_formats
+                "template" in ctx.report_formats
+                or "json" in ctx.report_formats
+                or "html" in ctx.report_formats
         )
         emit_dashboard = emit_template and ("html" in ctx.report_formats)
         passthrough = [f for f in ctx.report_formats if f != "template"]

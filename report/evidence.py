@@ -1,7 +1,8 @@
 """Điều phối đưa evidence video vào report: fetch (file-browser) -> upload S3 -> URL.
 
 `evidence_field` là tên field trong mỗi event (pred.events) chứa "ref" để tải video.
-Bạn điền field này ở bước poll_results; mặc định "evidence_path".
+Bạn điền field này ở bước poll_results; mặc định "evidence" (cả linfox_client lẫn
+handwashing_client đều gắn evidence path vào key "evidence").
 
 Lỗi từng evidence được nuốt (log warning) để KHÔNG làm hỏng cả report — video nào
 publish được thì có link, video lỗi thì bỏ qua.
@@ -28,7 +29,7 @@ class EvidencePublisher:
         self,
         fetcher: EvidenceFetcher,
         uploader: EvidenceUploader,
-        evidence_field: str = "evidence_path",
+        evidence_field: str = "evidence",
         key_prefix: str = "reports/evidence",
         work_dir: str = "downloads/evidence",
     ) -> None:

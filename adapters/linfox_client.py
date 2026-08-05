@@ -60,7 +60,7 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
     def trigger(self, videos: list[VideoRef], rule: RuleDef, batch_code: str) -> str:
         videos_config: dict[str, list[str]] = {}
         for v in videos:
-            videos_config.setdefault(v.camera_id or "unknown", []).append(v.name)
+            videos_config.setdefault(v.camera_id or "unknown", []).append(v.name.split(".mp4")[0])
         resp = self._session.post(
             self._url("/api/videos/analyze"),
             json={"batch_code": batch_code, "videos_config": videos_config},
@@ -118,8 +118,8 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
             data = body.get("data", [])
             for ev in data:
                 # Trích sẵn path clip evidence ra field phẳng để EvidencePublisher dùng
-                # (mặc định --evidence-field evidence_path).
-                ev["evidence_path"] = self._evidence_clip_path(ev)
+                # (mặc định --evidence-field "evidence", khớp field hand-washing dùng).
+                ev["evidence"] = self._evidence_clip_path(ev)
                 for key in self._evidence_keys(ev):
                     by_video.setdefault(key, []).append(ev)
             page_size = body.get("page_size", 100) or 100
@@ -129,23 +129,18 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         return by_video
 
     def poll_results(self, job_id: str, videos: list[VideoRef]) -> dict[str, Prediction]:
-        rule = self._batch_rule.get(job_id)
-        min_wait = rule.time_sleep if rule else 0
-        deadline = time.time() + self._timeout_sec
-        start = time.time()
-        prev: dict[str, int] | None = None
-        by_video: dict[str, list[dict]] = {}
+        """Lấy TOÀN BỘ evidence của batch.
 
-        while time.time() < deadline:
-            by_video = self._fetch_evidences(job_id, rule.code if rule else "")
-            elapsed = time.time() - start
-            # Chữ ký = SỐ evidence mỗi video (không chỉ tập tên) -> 1 video nhận thêm
-            # evidence cũng làm chữ ký đổi, tránh dừng sớm khi evidence tới rải rác.
-            sig = {name: len(evs) for name, evs in by_video.items()}
-            if elapsed >= min_wait and prev is not None and sig == prev:
-                break
-            prev = sig
-            time.sleep(self._poll_interval_sec)
+        `WaitHandler` (`ctx.waiting.wait()` — WaitingKafka/WaitingGrafana/WaitingParallel)
+        đã chờ tín hiệu AI xử lý xong TRƯỚC khi tới bước này, nên không còn cần poll lặp
+        lại dò hội tụ (so signature giữa các lần fetch) như trước — chỉ fetch 1 lần,
+        `_fetch_evidences` tự phân trang lấy hết `data` theo `total`/`page_size`.
+        """
+        rule = self._batch_rule.get(job_id)
+        if rule and rule.time_sleep:
+            # đệm nhỏ chờ hệ thống ghi/index evidence xong ngay sau khi báo idle.
+            time.sleep(rule.time_sleep)
+        by_video = self._fetch_evidences(job_id, rule.code if rule else "")
 
         results: dict[str, Prediction] = {}
         for v in videos:

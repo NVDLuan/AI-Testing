@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CNT10 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "_comment": {
+      "type": "string",
+      "ui:section": "advanced_hidden",
+      "default": ""
+    },
+    "utc_offset": {
+      "type": "integer",
+      "description": "Timezone for the camera location (e.g., '-5')",
+      "ui:section": "normal",
+      "default": -4
+    },
+    "work_days": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "ui:section": "advanced_hidden",
+      "default": [0, 1, 2, 3, 4]
+    },
+    "work_time": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "string"},
+      "description": "Working hours. Supports [\"06:30\", \"18:00\"]",
+      "ui:section": "advanced_hidden",
+      "default": ["06:30", "18:30"]
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "ui:section": "advanced_hidden",
+      "default": []
+    },
+    "cam_resolution": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "minItems": 2,
+      "maxItems": 2,
+      "ui:section": "advanced_hidden",
+      "default": [1280, 720]
+    },
+    "fps": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 10
+    },
+    "teacher_labels": {
+      "type": "array",
+      "items": {"type": "string"},
+      "ui:section": "advanced_hidden",
+      "default": ["adult"]
+    },
+    "student_labels": {
+      "type": "array",
+      "items": {"type": "string"},
+      "ui:section": "advanced_hidden",
+      "default": ["child"]
+    },
+    "age_classification_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.3
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.5
+    },
+    "window_duration_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "title": "Window Duration (seconds)",
+      "description": "Sliding window size for violation rate calculation",
+      "ui:section": "normal",
+      "default": 30
+    },
+    "violation_rate_threshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "title": "Violation Rate Threshold",
+      "description": "Fraction of window that must be violating to trigger an alert (e.g. 0.8 = 80%)",
+      "ui:section": "normal",
+      "default": 0.8
+    },
+    "reminder_interval_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "title": "Reminder Interval (seconds)",
+      "description": "How often to re-alert if violation continues (default 5 minutes)",
+      "ui:section": "normal",
+      "default": 300
+    },
+    "buffer_duration": {
+      "type": "integer",
+      "minimum": 10,
+      "title": "Evidence Buffer Duration (seconds)",
+      "description": "Total evidence video length: 3s pre-buffer + 30s violation = 33s",
+      "ui:section": "advanced_hidden",
+      "default": 33
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "utc_offset",
+    "work_days",
+    "work_time",
+    "cam_zones",
+    "cam_resolution",
+    "fps",
+    "teacher_labels",
+    "student_labels",
+    "age_classification_threshold",
+    "confidence_threshold",
+    "window_duration_seconds",
+    "violation_rate_threshold",
+    "reminder_interval_seconds",
+    "buffer_duration"
+  ]
+}

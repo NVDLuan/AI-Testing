@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MHE04 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "max_miss": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:section": "advanced"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+      "ui:section": "advanced"
+    },
+    "max_pallet_number": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "confidence_alpha": {
+      "type": "number",
+      "ui:section": "advanced"
+    },
+    "confidence_beta": {
+      "type": "number",
+      "ui:section": "advanced"
+    },
+    "confidence_gamma": {
+      "type": "number",
+      "ui:section": "advanced"
+    },
+    "confidence_delta": {
+      "type": "number",
+      "ui:section": "advanced"
+    },
+    "pallet_count_confidence_mu": {
+      "type": "number",
+      "ui:section": "advanced"
+    },
+    "pallet_count_confidence_sigma": {
+      "type": "number",
+      "ui:section": "advanced"
+    }
+  },
+  "required": [
+    "max_miss",
+    "target_class",
+    "cam_resolution",
+    "max_pallet_number",
+    "confidence_alpha",
+    "confidence_beta",
+    "confidence_gamma",
+    "confidence_delta",
+    "pallet_count_confidence_mu",
+    "pallet_count_confidence_sigma"
+  ],
+  "additionalProperties": true
+}

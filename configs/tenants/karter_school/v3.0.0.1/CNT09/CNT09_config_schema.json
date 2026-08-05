@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CNT09 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "_comment": {
+      "type": "string",
+      "ui:section": "advanced_hidden",
+      "default": ""
+    },
+    "timezone": {
+      "type": "string",
+      "description": "Timezone for the camera location (e.g., 'utc-5')",
+      "ui:section": "normal",
+      "default": "utc-5"
+    },
+    "cam_zones": {
+      "type": "array",
+      "ui:section": "zone",
+      "default": []
+    },
+    "cam_resolution": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "ui:section": "advanced_hidden",
+      "default": [
+        1920,
+        1080
+      ]
+    },
+    "fps": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 10
+    },
+    "violation_duration": {
+      "type": "integer",
+      "ui:section": "normal",
+      "title": "Violation Duration (seconds)",
+      "default": 600
+    },
+    "confirmation_window": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 60
+    },
+    "buffer_duration": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 600
+    },
+    "teacher_labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:section": "advanced_hidden",
+      "default": [
+        "adult"
+      ]
+    },
+    "student_labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:section": "advanced_hidden",
+      "default": [
+        "child"
+      ]
+    },
+    "age_classification_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.3
+    },
+    "bbox_area_min": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 500
+    },
+    "bbox_area_max": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 200000
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.5
+    },
+    "smoothing_window": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 5
+    },
+    "outlier_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 2.5
+    },
+    "min_frames_for_stats": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 30
+    },
+    "consensus_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.6
+    },
+    "evidence_fps": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 5
+    },
+    "evidence_speedup": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 12
+    },
+    "time_periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "teacher_count": {
+            "type": "integer"
+          },
+          "student_count": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "end_time",
+          "teacher_count",
+          "student_count"
+        ]
+      },
+      "ui:section": "advanced",
+      "default": [
+        {
+          "start_time": "13:00",
+          "end_time": "15:00",
+          "teacher_count": 1,
+          "student_count": 10,
+          "comment": "Nap time"
+        }
+      ]
+    },
+    "default_teacher_count": {
+      "type": "integer",
+      "ui:section": "normal",
+      "title": "Min Teacher Required",
+      "default": 1
+    },
+    "default_student_count": {
+      "type": "integer",
+      "ui:section": "normal",
+      "title": "Max Student per Teacher",
+      "default": 10
+    }
+  },
+  "required": [
+    "timezone",
+    "cam_zones",
+    "cam_resolution",
+    "fps",
+    "violation_duration",
+    "confirmation_window",
+    "buffer_duration",
+    "teacher_labels",
+    "student_labels",
+    "age_classification_threshold",
+    "bbox_area_min",
+    "bbox_area_max",
+    "confidence_threshold",
+    "smoothing_window",
+    "outlier_threshold",
+    "min_frames_for_stats",
+    "consensus_threshold",
+    "evidence_fps",
+    "evidence_speedup",
+    "time_periods",
+    "default_teacher_count",
+    "default_student_count"
+  ],
+  "additionalProperties": true
+}

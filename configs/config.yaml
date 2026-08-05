@@ -30,3 +30,12 @@ tenants:
     version: '2.1.0'
     load_dir: 'bv_c'
     dir: "bv_c"
+
+  - name: "Karter School"
+    jobs:
+      - name: 'SMOKE'
+        sheet_id: '1EWKPrTGoiJLXi5zGjppKOJlvbE35OG26ZOO249Xvg6k'
+    config: 'v3.0.0.1'
+    version: '3.0.0.1'
+    dir: 'Karter School'
+    load_dir: 'karter_school'

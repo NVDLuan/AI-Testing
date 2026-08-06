@@ -355,12 +355,18 @@ class ReportHandler(Handler):
         if emit_dashboard:
             passthrough = [f for f in passthrough if f != "html"]
 
+        # Tách report theo tenant/version -> test nhiều tenant song song không lẫn
+        # file vào nhau: reports/<tenant>/<version>/<file>.
+        tenant_slug = ctx.tenant.load_dir or ctx.tenant.name
+        version = ctx.tenant.config or ctx.tenant.version or "unversioned"
+        output_dir = os.path.join(ctx.report_dir, tenant_slug, version)
+
         title = f"{ctx.tenant.name} — job {ctx.job.name} (v{ctx.tenant.version})"
         written = write_reports(
             title=title,
-            customer_id=ctx.tenant.load_dir or ctx.tenant.name,
+            customer_id=tenant_slug,
             reports=ctx.reports,
-            output_dir=ctx.report_dir,
+            output_dir=output_dir,
             formats=passthrough,
             status="aborted" if ctx.aborted else "ok",
             reason=ctx.abort_reason,
@@ -371,11 +377,9 @@ class ReportHandler(Handler):
                 ctx.log.info("  report[%s] -> %s", fmt, path)
 
         if emit_template:
-            import os
-
             from report.template import write_template
 
-            json_path = write_template(ctx, output_dir=ctx.report_dir)
+            json_path = write_template(ctx, output_dir=output_dir)
             ctx.log.info("  report[template] -> %s", json_path)
 
             # Gen dashboard HTML từ file JSON vừa ghi (report/generate_report.py).

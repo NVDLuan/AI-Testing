@@ -30,10 +30,12 @@ class AnalysisClient(ABC):
         """Hook tuỳ chọn: nạp dữ liệu trước khi chạy (mock dùng để mô phỏng)."""
         return None
 
-    def update_rule_config(self, rule: RuleDef) -> None:
+    def update_rule_config(self, rule: RuleDef, videos: list[VideoRef]) -> None:
         """Đẩy config rule/camera lên hệ thống trước khi phân tích.
 
-        Mặc định no-op (vd hand-washing không cần). Generic API override để gọi /api/rule.
+        `videos`: danh sách video của rule này (cùng tập được LoadGroundTruthHandler
+        dựng) — generic API dùng để sinh camera_code ẢO riêng cho từng video, xem
+        `LinfoxHttpClient._video_camera_code`. Mặc định no-op (vd hand-washing không cần).
         """
         return None
 

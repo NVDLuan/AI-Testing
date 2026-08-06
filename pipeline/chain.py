@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .handlers import (
     CheckMissingHandler,
+    DrawZoneHandler,
     Handler,
     HealthCheckHandler,
     LoadGroundTruthHandler,
@@ -31,6 +32,7 @@ def build_default_chain(include_health: bool = True) -> Handler:
         UploadHandler(),
         UpdateRuleConfigHandler(),   # /api/rule (generic API); hand-washing no-op
         TriggerHandler(),
+        DrawZoneHandler(),  # vẽ ảnh debug zone cạnh video nguồn trên S3 (bỏ qua nếu đã có)
         WaitHandler(),
         GetResultsHandler(),
         ValidateHandler(),

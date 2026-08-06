@@ -21,6 +21,21 @@ except ImportError:
 
 logger = logging.getLogger("ai_testing.s3.storage")
 
+_VIDEO_CONTENT_TYPES = {
+    ".mp4": "video/mp4",
+    ".avi": "video/x-msvideo",
+    ".mov": "video/quicktime",
+    ".wmv": "video/x-ms-wmv",
+    ".flv": "video/x-flv",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".m4v": "video/x-m4v",
+}
+
+
+def guess_video_content_type(filename: str) -> str:
+    return _VIDEO_CONTENT_TYPES.get(Path(filename).suffix.lower(), "video/mp4")
+
 
 def _convert_to_h264(video_bytes: bytes) -> Optional[bytes]:
     """Convert bất kỳ video nào sang H.264 MP4 bằng ffmpeg (CPU libx264)."""
@@ -261,16 +276,7 @@ class S3StorageConnector:
             logger.error(f"Video file not found: {local_path}")
             return None
         if content_type is None:
-            content_type = {
-                ".mp4": "video/mp4",
-                ".avi": "video/x-msvideo",
-                ".mov": "video/quicktime",
-                ".wmv": "video/x-ms-wmv",
-                ".flv": "video/x-flv",
-                ".webm": "video/webm",
-                ".mkv": "video/x-matroska",
-                ".m4v": "video/x-m4v",
-            }.get(path.suffix.lower(), "video/mp4")
+            content_type = guess_video_content_type(path.name)
         return self.upload_video(path.read_bytes(), object_name, content_type, is_h264=is_h264)
 
     # --- misc ------------------------------------------------------------

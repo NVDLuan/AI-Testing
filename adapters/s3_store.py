@@ -264,10 +264,15 @@ class S3PublicUploader(EvidenceUploader):
             self._conn = conn
         return self._conn
 
-    def upload(self, local_path: str, key: str, prefix: str = 'qc-automation') -> str:
-        log.info("S3 upload %s -> s3://%s/%s", local_path, self._bucket, key)
+    def upload(self, content: bytes, filename: str, key: str, prefix: str = 'qc-automation') -> str:
+        """Upload thẳng từ bytes trong RAM (không qua file tạm trên đĩa)."""
+        from adapters.storage.s3_storage import guess_video_content_type
+
+        log.info("S3 upload %s (%d bytes) -> s3://%s/%s", filename, len(content), self._bucket, key)
         # key đã gồm prefix đầy đủ (report_s3_prefix) -> connector không thêm prefix nữa.
-        url = self._connector().upload_video_from_path(local_path, f'{prefix}/{key}')
+        url = self._connector().upload_video(
+            content, f'{prefix}/{key}', guess_video_content_type(filename)
+        )
         if not url:
             raise RuntimeError(f"Upload S3 thất bại: {key}")
         return url

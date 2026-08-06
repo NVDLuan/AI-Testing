@@ -110,7 +110,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     logging.basicConfig(
         level=logging.INFO,
-        format="%(levelname)s %(name)s: %(message)s",
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     loader = ConfigLoader(args.config)
@@ -147,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         s3_access_key=args.s3_access_key or os.environ.get("AWS_ACCESS_KEY_ID", ""),
         s3_secret_key=args.s3_secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
         s3_endpoint=args.s3_endpoint or os.environ.get("S3_ENDPOINT", ""),
-        cache_dir=args.cache_dir or os.environ.get("CACHE_DIR", "video_raw"),
+        cache_dir=args.cache_dir or os.environ.get("CACHE_DIR", ""),
         recordings_dir=args.recordings_dir,
         hw_layers=args.hw_layers,
         file_browser_url=args.file_browser_url or os.environ.get("FILE_BROWSER_URL", ""),

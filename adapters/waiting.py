@@ -82,6 +82,7 @@ class WaitingGrafana(WaitingBase):
             target_logs: list[str],
             poll_interval: int = 120,
             timeout: int = 30,
+            confirm_time: int = 300
     ):
         self.base_url = base_url.rstrip("/")
         self.username = username
@@ -93,6 +94,7 @@ class WaitingGrafana(WaitingBase):
         self.timeout = timeout
         self.session = requests.Session()
         self.uid = ""
+        self.confirm_time = confirm_time
 
     def _login(self) -> None:
         res = self.session.post(
@@ -165,9 +167,10 @@ class WaitingGrafana(WaitingBase):
         while True:
             time.sleep(self.poll_interval)
             logs = self._query_logs()
-            # print(logs)
             if any(any(t in log for t in self.target_logs) for log in logs):
                 logger.info("Grafana/Loki: AI idle confirmed")
+                logger.info("Waiting for other service processing finish...")
+                time.sleep(self.confirm_time)
                 return
             logger.info("Grafana/Loki: AI vẫn bận, thử lại sau %ss", self.poll_interval)
 

@@ -171,8 +171,10 @@ class WaitingGrafana(WaitingBase):
                 logger.info("Grafana/Loki: AI idle confirmed")
                 logger.info("Waiting for other service processing finish...")
                 time.sleep(self.confirm_time)
-                return
-            logger.info("Grafana/Loki: AI vẫn bận, thử lại sau %ss", self.poll_interval)
+                log_confirm = self._query_logs()
+                if any("[DONE] ds-app IDLE — nothing left to process" in item for item in log_confirm): # TODO: cần check lại phần này để validate cho từng dự án
+                    return
+            logger.info("AI processing.... Retry after %ss seconds", self.poll_interval)
 
 
 class WaitingParallel(WaitingBase):

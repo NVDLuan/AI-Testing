@@ -33,6 +33,9 @@ from tenants.factory import RunOptions
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Video CV analysis testing")
     p.add_argument("--config", "-c", default="configs/config.yaml", help="File config gốc")
+    p.add_argument("--env-file", default=".env",
+                   help="File .env để nạp secret (mặc định '.env') — đổi để chạy nhiều bộ "
+                        "secret khác nhau (vd .env.karter, .env.linfox) mà không cần đổi tên/copy đè")
     p.add_argument("--list", action="store_true", help="Liệt kê tenant/job/rule rồi thoát")
     p.add_argument("--tenant", "-t", help="Tên hoặc load_dir của tenant")
     p.add_argument("--job", "-j", help="Tên job (SMOKE, REGRESSION...)")
@@ -106,8 +109,8 @@ def _resolve_rules(loader: ConfigLoader, tenant: TenantConfig, rule_filter: list
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv()  # nạp secret từ .env trước khi đọc os.environ
     args = parse_args(argv if argv is not None else sys.argv[1:])
+    load_dotenv(args.env_file)  # nạp secret từ file .env chỉ định trước khi đọc os.environ
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",

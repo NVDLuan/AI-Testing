@@ -139,7 +139,7 @@ class TriggerHandler(Handler):
     @staticmethod
     def make_batch_code(customer: str, rule_code: str) -> str:
         return f"{customer.replace(' ', '_')}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        # return f"BV C_Hygiene_20260709_104853"
+        # return "Karter_School_CNT08_20260806_152825"
 
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
@@ -156,7 +156,7 @@ class TriggerHandler(Handler):
 class WaitHandler(Handler):
 
     def process(self, ctx: PipelineContext) -> None:
-        ctx.log.info("Waiting")
+        ctx.log.info("Waiting Result Return..........................")
         ctx.waiting.wait()
 
 

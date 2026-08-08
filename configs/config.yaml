@@ -15,7 +15,7 @@ tenants:
     jobs:
       - name: 'SMOKE'
         sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
-      - name: 'SMOKE_2'
+      - name: 'REGRESSION'
         sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
     config: 'v3.3.0.0-27_5_2026'
     version: '3.3.0.0'
@@ -24,7 +24,7 @@ tenants:
 
   - name: "BV C"
     jobs:
-      - name: "SMOKE"
+      - name: "REGRESSION"
         sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
     config: 'v2.1.0'
     version: '2.1.0'
@@ -33,8 +33,8 @@ tenants:
 
   - name: "Karter School"
     jobs:
-      - name: 'SMOKE'
-        sheet_id: '1EWKPrTGoiJLXi5zGjppKOJlvbE35OG26ZOO249Xvg6k'
+      - name: 'REGRESSION'
+        sheet_id: '14kIorgjBMRY6H_Jsz4gPRW1sPEm04jNv1Z_C9lKgi8Y'
     config: 'v3.0.0.1'
     version: '3.0.0.1'
     dir: 'Karter School'

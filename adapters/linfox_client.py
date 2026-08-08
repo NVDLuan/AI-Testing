@@ -83,8 +83,8 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         resp = self._session.post(
             self._url("/api/videos"),
             files=[("videos", (name, content, "video/mp4"))],
-            timeout=600,
         )
+        log.info("response upload: %s", resp.text)
         resp.raise_for_status()
 
     def trigger(self, videos: list[VideoRef], rule: RuleDef, batch_code: str) -> str:

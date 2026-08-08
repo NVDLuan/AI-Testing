@@ -110,41 +110,34 @@ class HandWashingHttpClient(BaseHttpClient, AnalysisClient):
         """Quét toàn bộ event của batch -> {norm-name video: [event đã chuẩn hoá,...]}.
 
         API có thể trả list trần HOẶC dạng phân trang {total,page,page_size,data:[...]}
-        — xử lý cả hai. Video không có event nào = "No Trigger".
+        — list trần coi như 1 trang duy nhất (không có thông tin để lặp tiếp); dạng phân
+        trang thì lặp tới khi `page * page_size >= total` (cùng cách `linfox_client
+        ._fetch_evidences` phân trang /api/evidences). Video không có event nào = "No Trigger".
         """
         by_video: dict[str, list[dict]] = {}
         page, page_size = 1, 300
-        # while True:
-        #     resp = self._session.get(
-        #         self._url(f"{_BASE}/events"),
-        #         params={"batch_code": batch_code, "skip": skip, "limit": limit},
-        #         timeout=30,
-        #     )
-        #     resp.raise_for_status()
-        #     body = resp.json()
-        #     data = body.get("data", []) if isinstance(body, dict) else (body or [])
-        #     for ev in data:
-        #         name = self._match_name(ev)  # ghép theo original_video_path
-        #         if not name:
-        #             continue
-        #         by_video.setdefault(name, []).append(self._parse_event(ev))
-        #     if len(data) < limit:
-        #         break
-        #     skip += limit
+        while True:
+            resp = self._session.get(
+                self._url(f"{_BASE}/events"),
+                params={"batch_code": batch_code, "page": page, "page_size": page_size},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            data = body.get("data", []) if isinstance(body, dict) else (body or [])
+            for ev in data:
+                name = self._match_name(ev)
+                if not name:
+                    continue
+                by_video.setdefault(name, []).append(self._parse_event(ev))
 
-        resp = self._session.get(
-            self._url(f"{_BASE}/events"),
-            params={"batch_code": batch_code, "page": page, "page_size": page_size},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        data = body.get("data", []) if isinstance(body, dict) else (body or [])
-        for ev in data:
-            name = self._match_name(ev)  # ghép theo original_video_path
-            if not name:
-                continue
-            by_video.setdefault(name, []).append(self._parse_event(ev))
+            if not isinstance(body, dict):
+                break  # list trần -> không có total/page_size để biết còn trang sau không
+            total = body.get("total")
+            actual_page_size = body.get("page_size", page_size) or page_size
+            if not data or total is None or page * actual_page_size >= total:
+                break
+            page += 1
         return by_video
 
     def poll_results(self, job_id: str, videos: list[VideoRef]) -> dict[str, Prediction]:

@@ -188,7 +188,7 @@ class ViolationStrategy(_HandWashingBase):
         if not violation_match:
             return "FN" if gt.expected_violation else "FP"
         if not self._cond_ok(gt, ev.get("counts", {})):
-            return "F" + "N" if gt.expected_violation else "F"
+            return "F" + ("N" if gt.expected_violation else "F")
         return "TP" if gt.expected_violation else "TN"
 
     def classify(self, gt: GroundTruthRecord, pred: Prediction) -> list[str]:

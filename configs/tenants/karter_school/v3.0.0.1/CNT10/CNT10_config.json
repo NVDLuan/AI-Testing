@@ -1,6 +1,6 @@
 {
     "ksr_01": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -32,7 +32,7 @@
       "fps": 10
     },
     "ksr_02": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -64,7 +64,7 @@
       "fps": 10
     },
     "ksr_03": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -96,7 +96,7 @@
       "fps": 10
     },
     "ksr_04": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -128,7 +128,7 @@
       "fps": 10
     },
     "ksr_05": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -160,7 +160,7 @@
       "fps": 10
     },
     "ksr_06": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -192,7 +192,7 @@
       "fps": 10
     },
     "ksr_07": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -224,7 +224,7 @@
       "fps": 10
     },
     "ksr_08": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -256,7 +256,7 @@
       "fps": 10
     },
     "ksr_09": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -288,7 +288,7 @@
       "fps": 10
     },
     "ksr_10": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -320,7 +320,7 @@
       "fps": 10
     },
     "ksr_11": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],
@@ -352,7 +352,7 @@
       "fps": 10
     },
     "ksr_12": {
-      "isRealtime": true,
+      "isRealtime": false,
       "teacher_labels": [
         "adult"
       ],

@@ -69,11 +69,16 @@ def _strip_ext(name: str) -> str:
 
 def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> dict[str, Any]:
     outcome = comp.outcome if comp else "MISSING"
+    raw = gt.raw or {}
+    test_case_description = _raw_get(raw, "Test Case Description", "Short description")
     if is_handwashing(gt):
+        # bv_c: QC note = so sánh expected/actual rồi diễn giải lý do sai (giữ nguyên).
         expect_note, actual_note, validation_note = handwashing_notes(gt, comp, pred, strategy, outcome)
     else:
-        expect_note, actual_note, validation_note = default_notes(outcome)
-    raw = gt.raw or {}
+        # linfox/EWS/karter: QC note = Test Case Description khai trong sheet, không
+        # phải câu diễn giải outcome (khác bv_c) — expect/actual vẫn theo outcome.
+        expect_note, actual_note, _ = default_notes(outcome)
+        validation_note = test_case_description
     url_raw = _raw_get(raw, "Video Raw", "Video Name1") or gt.video_url
     # evidence đã publish lên S3 (PublishEvidenceHandler gắn vào comp.detail)
     fb_urls = list((comp.detail or {}).get("evidence_urls", [])) if comp and comp.detail else []
@@ -93,7 +98,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
         "event_index": comp.event_index if comp else 0,
         "event_count": comp.event_count if comp else 1,
         "test_case_id": _raw_get(raw, "TC", "Test Case", "test_case_id"),
-        "test_case_description": _raw_get(raw, "Test Case Description", "Short description"),
+        "test_case_description": test_case_description,
         "expected_status": _raw_get(raw, "Expected Status") or ("Approve" if gt.expected_violation else "Reject"),
         "expect_note": expect_note,
         "actual_note": actual_note,

@@ -194,7 +194,19 @@ class TenantFactory:
 
     def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
         from adapters.waiting import WaitingTimeout
-        hour, mut, sec = opts.waiting_time.split(":")
+
+        if not opts.waiting_time:
+            raise ValueError(
+                f"Tenant {tenant.name!r} cần env TIME_WAITING (định dạng 'H:M:S', vd "
+                "'0:30:0') để biết chờ AI xử lý bao lâu — tenant này không dùng "
+                "Kafka/Grafana để tự dò tín hiệu rảnh."
+            )
+        try:
+            hour, mut, sec = opts.waiting_time.split(":")
+        except ValueError as exc:
+            raise ValueError(
+                f"TIME_WAITING={opts.waiting_time!r} sai định dạng, cần 'H:M:S' (vd '0:30:0')"
+            ) from exc
 
         return WaitingTimeout(seconds=int(sec), minutes=int(mut), hours=int(hour))
 

@@ -1,0 +1,209 @@
+{
+  "ksr_01": {
+    "_comment": "Classroom 1 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_02": {
+    "_comment": "Classroom 2 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_03": {
+    "_comment": "Classroom 3 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_04": {
+    "_comment": "Classroom 4 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_05": {
+    "_comment": "Classroom 5 - No items on the floorr",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_06": {
+    "_comment": "Classroom 6 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_07": {
+    "_comment": "Classroom 7 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_08": {
+    "_comment": "Classroom 8 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_12": {
+    "_comment": "Classroom 12 - No items on the floor",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  }
+}

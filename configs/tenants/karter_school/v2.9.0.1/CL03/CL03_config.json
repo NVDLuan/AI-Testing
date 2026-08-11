@@ -1,0 +1,71 @@
+{
+  "ksr_09": {
+    "_comment": "Playground 9 - No bicycle on ground",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_10": {
+    "_comment": "Playground 10 - No bicycle on ground",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  },
+  "ksr_11": {
+    "_comment": "Playground 11 - No bicycle on ground",
+    "timezone": "utc-5",
+    "cam_zones": [],
+    "checking_zone": [],
+    "cam_resolution": [
+      1920,
+      1080
+    ],
+    "fps": 10,
+    "schedule": [
+      {
+        "type": "one_shot",
+        "time": "07:00",
+        "end_time": "07:10"
+      },
+      {
+        "type": "one_shot",
+        "time": "18:00",
+        "end_time": "18:15"
+      }
+    ]
+  }
+}

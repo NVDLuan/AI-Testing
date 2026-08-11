@@ -1,0 +1,30 @@
+rules:
+
+
+  - name: 'OVER RATIO'
+    code: 'CNT08'
+    sheet: 'OVER RATIO'
+    type: 'SHORT'
+    time_sleep: 7
+    batch_debug: ['KSR_OVER_RATIO_20260729_134441']
+
+  - name: 'UNDER RATIO'
+    code: 'CNT09'
+    sheet: 'UNDER RATIO'
+    type: 'SHORT'
+    time_sleep: 7
+    batch_debug: ['KSR_UNDER_RATIO_20260729_134441']
+
+  - name: 'UNATTENDED STUDENT'
+    code: 'CNT10'
+    sheet: 'UNATTENDED STUDENT'
+    type: 'SHORT'
+    time_sleep: 7
+    batch_debug: [ 'KSR_UNATTENDED_STUDENT_20260729_134441' ]
+
+  - name: 'USE PHONE'
+    code: 'PAR03'
+    sheet: 'USE PHONE'
+    type: 'SHORT'
+    time_sleep: 7
+    batch_debug: ['KSR_USE_PHONE_20260729_134441']

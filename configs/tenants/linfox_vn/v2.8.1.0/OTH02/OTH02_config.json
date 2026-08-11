@@ -1,0 +1,3 @@
+{
+  "linfox_DCBN-192_168_10_4": {"max_miss":15,"n_frame_stop":10,"cam_resolution":[1920,1080],"cam_zones":[],"alcohol_test_area":{"start_line":[[750,420],[1250,420]],"end_line":[[1620,870],[200,870]]},"alcohol_iou_threshold":0.1}
+}

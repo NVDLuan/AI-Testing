@@ -3,7 +3,7 @@
 Luồng:
     1. POST /api/login {username, password}  -> response.text = auth token
        gửi kèm mọi request sau dưới header `Cookie: auth=<token>`.
-    2. GET  /api/raw<file_path>               -> nội dung video (stream về file local).
+    2. GET  /api/raw<file_path>               -> nội dung video (tải thẳng vào RAM).
        Nếu lỗi và path bắt đầu bằng "/evidence", thử lại sau khi bỏ tiền tố đó.
 
 `ref` (giá trị `evidence_field` trong mỗi event do bên thứ 3 trả về) chính là
@@ -81,7 +81,12 @@ class FileBrowserFetcher(EvidenceFetcher):
             )
         return resp
 
-    def fetch(self, ref: str, dest_dir: str) -> str:
+    @staticmethod
+    def _read_content(resp: requests.Response) -> bytes:
+        with resp:
+            return resp.content
+
+    def fetch(self, ref: str) -> tuple[bytes, str]:
         file_path = ref if ref.startswith("/") else f"/{ref}"
         resp = self._get_raw(file_path)
 
@@ -95,27 +100,22 @@ class FileBrowserFetcher(EvidenceFetcher):
             log.warning("File Browser tải evidence thất bại: path=%s status=%s", ref, status)
             if resp is not None:
                 resp.close()
-            return ""
+            return b"", ""
 
-        os.makedirs(dest_dir, exist_ok=True)
-        local = os.path.join(dest_dir, _safe_basename(file_path))
-        with resp:
-            with open(local, "wb") as f:
-                for chunk in resp.iter_content(chunk_size=1 << 20):  # 1MB
-                    if chunk:
-                        f.write(chunk)
-        log.info("File Browser tải %s -> %s", ref, local)
-        return local
+        content = self._read_content(resp)
+        filename = _safe_basename(file_path)
+        log.info("File Browser tải %s -> %d bytes (RAM)", ref, len(content))
+        return content, filename
 
 
 class DownloadEvidenceHandWashingFetcher(FileBrowserFetcher):
     API_LOGIN = "/api/login"
     API_RAW = "/api/raw"
-    
+
     def convert_url(self, file_path: str) -> str:
         return file_path.replace('app/data', 'ehp-video-data')
 
-    def fetch(self, ref: str, dest_dir: str) -> str:
+    def fetch(self, ref: str) -> tuple[bytes, str]:
         file_path = ref if ref.startswith("/") else f"/{ref}"
         resp = self._get_raw(self.convert_url(file_path))
 
@@ -129,14 +129,9 @@ class DownloadEvidenceHandWashingFetcher(FileBrowserFetcher):
             log.warning("File Browser tải evidence thất bại: path=%s status=%s", ref, status)
             if resp is not None:
                 resp.close()
-            return ""
+            return b"", ""
 
-        os.makedirs(dest_dir, exist_ok=True)
-        local = os.path.join(dest_dir, _safe_basename(file_path))
-        with resp:
-            with open(local, "wb") as f:
-                for chunk in resp.iter_content(chunk_size=1 << 20):  # 1MB
-                    if chunk:
-                        f.write(chunk)
-        log.info("File Browser tải %s -> %s", ref, local)
-        return local
+        content = self._read_content(resp)
+        filename = _safe_basename(file_path)
+        log.info("File Browser tải %s -> %d bytes (RAM)", ref, len(content))
+        return content, filename

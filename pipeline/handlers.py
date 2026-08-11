@@ -9,6 +9,8 @@ Thêm/bớt/đổi thứ tự bước = sửa danh sách trong chain.build_defau
 """
 from __future__ import annotations
 
+import os
+import tempfile
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -125,9 +127,10 @@ class UpdateRuleConfigHandler(Handler):
 
     def process(self, ctx: PipelineContext) -> None:
         for rule in ctx.rules:
-            if not ctx.videos_by_rule.get(rule.code):
+            videos = ctx.videos_by_rule.get(rule.code)
+            if not videos:
                 continue
-            ctx.client.update_rule_config(rule)
+            ctx.client.update_rule_config(rule, videos)
 
 
 class TriggerHandler(Handler):
@@ -135,8 +138,8 @@ class TriggerHandler(Handler):
 
     @staticmethod
     def make_batch_code(customer: str, rule_code: str) -> str:
-        # return f"{customer}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        return f"BV C_Hygiene_20260709_104853"
+        return f"{customer.replace(' ', '_')}_{rule_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # return "Karter_School_CNT08_20260806_152825"
 
     def process(self, ctx: PipelineContext) -> None:
         rule_by_code = {r.code: r for r in ctx.rules}
@@ -145,7 +148,7 @@ class TriggerHandler(Handler):
                 continue
             rule = rule_by_code[code]
             batch_code = self.make_batch_code(ctx.tenant.name, rule.code)
-            # ctx.client.trigger(videos, rule, batch_code)
+            ctx.client.trigger(videos, rule, batch_code)
             ctx.batch_codes[code] = batch_code
             ctx.log.info("  rule=%s: trigger job=%s", rule.name, batch_code)
 
@@ -153,7 +156,7 @@ class TriggerHandler(Handler):
 class WaitHandler(Handler):
 
     def process(self, ctx: PipelineContext) -> None:
-        ctx.log.info("Waiting")
+        ctx.log.info("Waiting Result Return..........................")
         ctx.waiting.wait()
 
 
@@ -188,6 +191,96 @@ class ValidateHandler(Handler):
                 "  [%s] TP=%d FP=%d FN=%d TN=%d | Recall=%.3f FAR=%.3f",
                 strat.name, ov.tp, ov.fp, ov.fn, ov.tn, ov.recall, ov.far,
             )
+
+def _extract_first_frame(video_bytes: bytes):
+    """Tách frame đầu của video (cv2 cần path/stream nên phải ghi tạm ra đĩa)."""
+    import cv2
+
+    fd, path = tempfile.mkstemp(suffix=".mp4")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(video_bytes)
+        cap = cv2.VideoCapture(path)
+        try:
+            ok, frame = cap.read()
+            return frame if ok else None
+        finally:
+            cap.release()
+    finally:
+        os.unlink(path)
+
+
+class DrawZoneHandler(Handler):
+    """Vẽ ảnh minh hoạ zone camera cạnh video nguồn trên S3 (debug cho QC).
+
+    Bỏ qua êm khi: `video_store` không phải S3 (mock/offline), thiếu opencv-python,
+    hoặc video không có camera config khớp. Idempotent: ảnh đã tồn tại ở đúng vị trí
+    `report.template.image_config_url` sẽ trỏ tới thì bỏ qua, không vẽ+upload lại.
+    """
+
+    def process(self, ctx: PipelineContext) -> None:
+        from adapters.s3_store import S3VideoStore
+
+        if not isinstance(ctx.video_store, S3VideoStore):
+            ctx.log.info("  bỏ qua vẽ zone (video_store không phải S3, vd mock/offline)")
+            return
+        try:
+            import cv2
+        except ImportError:
+            ctx.log.warning("  bỏ qua vẽ zone: chưa cài opencv-python (xem requirements.txt)")
+            return
+        from adapters.draw_zone import ZoneDrawer
+        from report.template import image_config_url
+
+        version_config = ctx.tenant.config or ctx.tenant.version
+        drawer = ZoneDrawer()
+        drawn = skipped = failed = 0
+
+        for rule in ctx.rules:
+            for video in ctx.videos_by_rule.get(rule.code) or []:
+                if not video.url:
+                    continue
+                img_url = image_config_url(video.url, version_config)
+                if not img_url:
+                    continue
+                try:
+                    if ctx.video_store.object_exists(img_url):
+                        skipped += 1
+                        continue
+
+                    camera = rule.cameras.get(video.camera_id)
+                    if camera is None:
+                        ctx.log.warning(
+                            "  video=%s: không có camera config (camera_id=%s) -> bỏ qua vẽ zone",
+                            video.name, video.camera_id,
+                        )
+                        continue
+
+                    content, _ = ctx.video_store.fetch(video)
+                    if not content:
+                        ctx.log.error("  video=%s: không tải được video nguồn -> bỏ qua vẽ zone", video.name)
+                        continue
+
+                    frame = _extract_first_frame(content)
+                    if frame is None:
+                        ctx.log.error("  video=%s: không tách được frame đầu -> bỏ qua vẽ zone", video.name)
+                        continue
+
+                    frame = drawer.draw(frame, camera.raw)
+                    ok, buf = cv2.imencode(".webp", frame, [cv2.IMWRITE_WEBP_QUALITY, 85])
+                    if not ok:
+                        ctx.log.error("  video=%s: encode webp thất bại", video.name)
+                        continue
+
+                    ctx.video_store.upload_bytes(img_url, buf.tobytes(), "image/webp")
+                    drawn += 1
+                except Exception as exc:  # noqa: BLE001 — 1 video lỗi không hỏng cả run
+                    failed += 1
+                    ctx.log.warning("  video=%s: lỗi vẽ/upload zone: %s", video.name, exc)
+
+        ctx.log.info("  zone visualization: %d vẽ mới, %d đã có sẵn, %d lỗi", drawn, skipped, failed)
+
+
 
 
 class PublishEvidenceHandler(Handler):
@@ -244,10 +337,16 @@ class ReportHandler(Handler):
         from report.reporter import write_reports
 
         aborted = ctx.aborted or not ctx.reports
-        # 'json' và 'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
-        # Khi abort thì không có kết quả -> 'json' rơi về *_ABORTED.json của write_reports.
+        # 'json'/'template' -> file test_results_*.json (mẫu QC) khi chạy XONG.
+        # 'html' LUÔN dùng dashboard dựng từ schema QC này (không còn phụ thuộc phải
+        # kèm 'json'/'template' trong --formats) -> đây là đường HTML chuẩn duy nhất
+        # cho lượt chạy thành công; đường HTML bảng đơn giản cũ chỉ còn dùng khi ABORT
+        # (không có comparison để dựng dashboard). Khi abort thì không có kết quả ->
+        # 'json' rơi về *_ABORTED.json của write_reports.
         emit_template = (not aborted) and (
-                "template" in ctx.report_formats or "json" in ctx.report_formats
+                "template" in ctx.report_formats
+                or "json" in ctx.report_formats
+                or "html" in ctx.report_formats
         )
         emit_dashboard = emit_template and ("html" in ctx.report_formats)
         passthrough = [f for f in ctx.report_formats if f != "template"]
@@ -256,12 +355,18 @@ class ReportHandler(Handler):
         if emit_dashboard:
             passthrough = [f for f in passthrough if f != "html"]
 
+        # Tách report theo tenant/version -> test nhiều tenant song song không lẫn
+        # file vào nhau: reports/<tenant>/<version>/<file>.
+        tenant_slug = ctx.tenant.load_dir or ctx.tenant.name
+        version = ctx.tenant.config or ctx.tenant.version or "unversioned"
+        output_dir = os.path.join(ctx.report_dir, tenant_slug, version)
+
         title = f"{ctx.tenant.name} — job {ctx.job.name} (v{ctx.tenant.version})"
         written = write_reports(
             title=title,
-            customer_id=ctx.tenant.load_dir or ctx.tenant.name,
+            customer_id=tenant_slug,
             reports=ctx.reports,
-            output_dir=ctx.report_dir,
+            output_dir=output_dir,
             formats=passthrough,
             status="aborted" if ctx.aborted else "ok",
             reason=ctx.abort_reason,
@@ -272,11 +377,9 @@ class ReportHandler(Handler):
                 ctx.log.info("  report[%s] -> %s", fmt, path)
 
         if emit_template:
-            import os
-
             from report.template import write_template
 
-            json_path = write_template(ctx, output_dir=ctx.report_dir)
+            json_path = write_template(ctx, output_dir=output_dir)
             ctx.log.info("  report[template] -> %s", json_path)
 
             # Gen dashboard HTML từ file JSON vừa ghi (report/generate_report.py).

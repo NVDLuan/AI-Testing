@@ -11,144 +11,27 @@ timing, camera config, raw sheet... mà ValidationReport không giữ).
 `"<rule.code> - <strategy.name>"` (vd "Hygiene - Trigger", "Hygiene - Violation") thay vì
 gộp chung — dashboard không cần sửa vì đã render generic theo từng entry `details{}`.
 Rule chỉ có 1 layer (mặc định linfox/EWS) giữ nguyên tên `rule.code`, không suffix.
+
+Note của từng dòng test case (expect/actual/validation) khác nhau theo flow — phần đó
+KHÔNG nằm ở đây nữa mà tách ra `report/notes_linfox.py` (mặc định, linfox/EWS/karter)
+và `report/notes_handwashing.py` (riêng bv_c, đọc theo layer Sequence/Count/Violation &
+cond). File này chỉ còn lo phần khung schema CHUNG (batch/rule/video/timing...), gọi
+đúng module note theo `is_handwashing(gt)`.
 """
 from __future__ import annotations
 
 import json
 import os
-import re
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from report.notes_handwashing import handwashing_notes, is_handwashing
+from report.notes_linfox import default_notes
+
 if TYPE_CHECKING:
     from pipeline.context import PipelineContext
     from validator.validator import ValidationReport
-
-# outcome -> (expect_note, actual_note, validation_note, detect_result)
-_NOTE_BY_OUTCOME: dict[str, tuple[str, str, str, str]] = {
-    "TP": ("Detects hand-washing behavior", "Detects hand-washing behavior", "", "PASSED"),
-    "TN": ("Không có vi phạm", "Không có vi phạm", "", "PASSED"),
-    "FN": ("Detects hand-washing behavior", "Bỏ sót vi phạm: ",
-           "Missed event", "FAILED"),
-    "FP": ("Không có vi phạm", "Báo nhầm vi phạm: ",
-           "Actual result differs from the expected result", "FAILED"),
-    "MISSING": ("", "Không có kết quả phân tích",
-                "No analysis result returned for this video", "FAILED"),
-}
-
-
-def _seq_str(seq) -> str:
-    return ",".join(str(x) for x in (seq or []))
-
-
-def _is_handwashing(gt) -> bool:
-    """Nhận diện case bv_c V2: có Step Sequence hoặc nhãn 3-state (expected_triggered)."""
-    return gt.expected_triggered is not None or "Step Sequence" in (gt.raw or {})
-
-
-def _handwashing_notes(gt, pred) -> tuple[str, str]:
-    """Note theo V2: 'Violation: <T/F> - sequence step: <a,b,c>' cho expected & actual."""
-    exp_seq = [int(x) for x in re.findall(r"\d+", str((gt.raw or {}).get("Step Sequence", "")))]
-    expect_note = f"Sequence step: {_seq_str(exp_seq)}"
-
-    if pred and pred.events:
-        act_viol = bool(pred.has_violation)
-        seqs = [ev.get("sequence", []) for ev in pred.events if ev.get("sequence")]
-        act_seq = " | ".join(_seq_str(s) for s in seqs)  # nhiều event -> ngăn bằng ' | '
-    else:
-        act_viol, act_seq = False, ""
-    actual_note = f"Sequence step: {act_seq}"
-    return expect_note, actual_note
-
-
-def _b_counts(raw: dict) -> dict[str, int]:
-    """Đọc count kỳ vọng từ các cột B0..B6 trong sheet -> {code: int}."""
-    out: dict[str, int] = {}
-    for k, v in (raw or {}).items():
-        if re.match(r"^B\d+$", str(k).strip(), re.I):
-            try:
-                out[str(k).strip().upper()] = int(float(str(v).strip()))
-            except (ValueError, TypeError):
-                out[str(k).strip().upper()] = 0
-    return out
-
-
-def _counts_kv(counts: dict) -> str:
-    return ",".join(f"{k}:{counts[k]}" for k in sorted(counts))
-
-
-def _handwashing_count_notes(gt, pred) -> tuple[str, str]:
-    """Note theo V3: 'Violation: <T/F> - step count: B1:5,B2:3,...' cho expected & actual."""
-    exp = _b_counts(gt.raw)
-    expect_note = f"Violation: {bool(gt.expected_violation)} - step count: {_counts_kv(exp)}"
-
-    if pred and pred.events:
-        # gộp count theo từng step qua các event (lấy max), rồi căn theo các code expected.
-        merged: dict[str, int] = {}
-        for ev in pred.events:
-            for code, c in (ev.get("counts") or {}).items():
-                cu = str(code).strip().upper()
-                try:
-                    c = int(float(str(c)))
-                except (ValueError, TypeError):
-                    c = 0
-                merged[cu] = max(merged.get(cu, 0), c)
-        shown = {code: merged.get(code, 0) for code in exp} if exp else merged
-        actual_note = f"Violation: {bool(pred.has_violation)} - step count: {_counts_kv(shown)}"
-    else:
-        actual_note = "Violation: False - step count: "
-    return expect_note, actual_note
-
-
-def _violation_cond_notes(gt, pred) -> tuple[str, str]:
-    """Note cho layer Violation & cond: nhãn Violation/No Violation + cond (count) đang
-    check — cond đổi theo GT: No Violation -> count >= 5; Violation -> count lệch expected <= 1.
-    """
-    exp_counts = _b_counts(gt.raw)
-    exp_label = "Violation" if gt.expected_violation else "No Violation"
-    cond_desc = "count lệch expected <= 1" if gt.expected_violation else "count >= 5"
-    expect_note = f"{exp_label} - cond: {cond_desc}"
-    if exp_counts:
-        expect_note += f" - step count: {_counts_kv(exp_counts)}"
-
-    if pred and pred.events:
-        act_label = "Violation" if pred.has_violation else "No Violation"
-        # gộp count theo từng step qua các event (lấy max), rồi căn theo các code expected.
-        merged: dict[str, int] = {}
-        for ev in pred.events:
-            for code, c in (ev.get("counts") or {}).items():
-                cu = str(code).strip().upper()
-                try:
-                    c = int(float(str(c)))
-                except (ValueError, TypeError):
-                    c = 0
-                merged[cu] = max(merged.get(cu, 0), c)
-        shown = {code: merged.get(code, 0) for code in exp_counts} if exp_counts else merged
-        actual_note = f"{act_label} - step count: {_counts_kv(shown)}" if shown else act_label
-    else:
-        actual_note = "No Violation"
-    return expect_note, actual_note
-
-
-def _violation_cond_reason_note(comp) -> str | None:
-    """QC note cho FN/FP ở layer Violation & cond — phân biệt LÝ DO sai theo đúng event
-    (`comp.event_index`) trong `comp.detail['events']` (gắn bởi `ViolationStrategy.detail()`):
-        - violation flag sai (không khớp GT)      -> "nhận diện sai vi phạm"
-        - violation flag khớp nhưng cond (count) sai -> "nhận diện thiếu số lần rửa tay"
-    None nếu không xác định được (thiếu detail/event) -> giữ note mặc định theo outcome.
-    """
-    detail = comp.detail or {}
-    events = detail.get("events") or []
-    if comp.event_index >= len(events):
-        return None
-    ev = events[comp.event_index]
-    violation_match = bool(ev.get("violation")) == bool(detail.get("expected_violation"))
-    if not violation_match:
-        return "incorrect identification of violation"
-    if not ev.get("cond_ok", True):
-        return "The detected handwashing steps are fewer than required"
-    return None
 
 
 def _raw_get(raw: dict, *keys: str) -> str:
@@ -159,8 +42,13 @@ def _raw_get(raw: dict, *keys: str) -> str:
     return ""
 
 
-def _image_config_url(url_raw: str, version_config: str) -> str:
-    """Suy URL ảnh debug zone từ URL video raw (cùng thư mục, thêm debug_zone_<vc>)."""
+def image_config_url(url_raw: str, version_config: str) -> str:
+    """Suy URL ảnh debug zone từ URL video raw (cùng thư mục, thêm debug_zone_<vc>).
+
+    Nguồn chân lý DUY NHẤT cho quy ước đặt tên này — `DrawZoneHandler`
+    (pipeline/handlers.py) cũng gọi hàm này để biết vẽ/upload ảnh vào đúng chỗ mà
+    report sẽ trỏ tới, tránh lệch giữa URL hiển thị và object thật trên S3.
+    """
     if not url_raw or "/" not in url_raw:
         return ""
     prefix, fname = url_raw.rsplit("/", 1)
@@ -181,30 +69,16 @@ def _strip_ext(name: str) -> str:
 
 def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> dict[str, Any]:
     outcome = comp.outcome if comp else "MISSING"
-    expect_note, actual_note, validation_note, _detect = _NOTE_BY_OUTCOME.get(
-        outcome, ("", "", "", "FAILED")
-    )
-    # bv_c: batch = 1 layer (report.strategy) -> note đúng tiêu chí của layer đó
-    # (Sequence -> Step Sequence, Count -> count từng bước, Violation & cond -> nhãn
-    # Violation/No Violation + cond count đang check). Trigger dùng note mặc định theo
-    # outcome — không có tiêu chí sequence/count/violation riêng để nói.
-    if _is_handwashing(gt):
-        if strategy == "Sequence":
-            expect_note, actual_note = _handwashing_notes(gt, pred)
-        elif strategy == "Count":
-            expect_note, actual_note = _handwashing_count_notes(gt, pred)
-        elif strategy == "Violation & cond":
-            expect_note, actual_note = _violation_cond_notes(gt, pred)
-            if comp is not None and outcome in ("FN", "FP"):
-                reason_note = _violation_cond_reason_note(comp)
-                if reason_note:
-                    validation_note = reason_note
-        # No Trigger: bỏ qua note step/sequence/count, chỉ hiển thị "Không trigger".
-        if gt.expected_triggered is False:
-            expect_note = "No Trigger"
-        if not (pred and pred.events):
-            actual_note = "No Trigger"
     raw = gt.raw or {}
+    test_case_description = _raw_get(raw, "Test Case Description", "Short description")
+    if is_handwashing(gt):
+        # bv_c: QC note = so sánh expected/actual rồi diễn giải lý do sai (giữ nguyên).
+        expect_note, actual_note, validation_note = handwashing_notes(gt, comp, pred, strategy, outcome)
+    else:
+        # linfox/EWS/karter: QC note = Test Case Description khai trong sheet, không
+        # phải câu diễn giải outcome (khác bv_c) — expect/actual vẫn theo outcome.
+        expect_note, actual_note, _ = default_notes(outcome)
+        validation_note = test_case_description
     url_raw = _raw_get(raw, "Video Raw", "Video Name1") or gt.video_url
     # evidence đã publish lên S3 (PublishEvidenceHandler gắn vào comp.detail)
     fb_urls = list((comp.detail or {}).get("evidence_urls", [])) if comp and comp.detail else []
@@ -224,7 +98,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
         "event_index": comp.event_index if comp else 0,
         "event_count": comp.event_count if comp else 1,
         "test_case_id": _raw_get(raw, "TC", "Test Case", "test_case_id"),
-        "test_case_description": _raw_get(raw, "Test Case Description", "Short description"),
+        "test_case_description": test_case_description,
         "expected_status": _raw_get(raw, "Expected Status") or ("Approve" if gt.expected_violation else "Reject"),
         "expect_note": expect_note,
         "actual_note": actual_note,
@@ -234,7 +108,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
         "detect_result": outcome,
         "validation_note": validation_note,
         "url_video_raw": url_raw,
-        "url_image_config": _image_config_url(url_raw, version_config),
+        "url_image_config": image_config_url(url_raw, version_config),
         "evidence_count": evidence_count,
         "url_video_evidence": single_url,
         "url_video_evidence_filebrowser": single_url,

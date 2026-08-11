@@ -102,7 +102,7 @@ python main.py -t linfox_vn -j SMOKE --source gsheet_public \
 python main.py -t linfox_vn -j SMOKE --source gsheet_public \
     --analysis http --api-url http://103.104.122.36:8000 \
     --s3-bucket my-bucket \
-    --file-browser-url http://FB_HOST --evidence-field evidence_path \
+    --file-browser-url http://FB_HOST \
     --formats console html json
 ```
 
@@ -151,7 +151,8 @@ export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... S3_BUCKET=my-bucket
 
 Cần `--formats html` **và** đủ cấu hình (`FILE_BROWSER_URL` + bucket). `FileBrowserFetcher`
 login lấy cookie `auth=`, tải `/api/raw<path>`; `S3PublicUploader` upload public-read trả
-URL. `--evidence-field` trỏ field trong event chứa path evidence (linfox: `evidence_path`).
+URL. `--evidence-field` trỏ field trong event chứa path evidence, mặc định `evidence`
+(cả linfox lẫn bv_c đều gắn evidence path vào key này, không cần đổi mặc định theo tenant).
 Thiếu cấu hình → bỏ qua êm (HTML vẫn ra, không link); log warning nói thiếu gì.
 
 ### Luật chấm bv_c (hand-washing)

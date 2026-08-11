@@ -140,6 +140,13 @@ class S3VideoStore(VideoStore):
             log.warning("HTTP tải lỗi (%s), thử S3 API: %s", exc, url)
             return None
 
+    def _endpoint_for(self, url: str) -> tuple[str, str]:
+        """(endpoint_url, addressing_style) cho 1 url/key — cùng quy tắc dùng ở fetch()."""
+        if url.startswith("http://") or url.startswith("https://"):
+            return endpoint_for_url(url)  # bucket riêng tư -> S3 API theo host URL
+        endpoint = self._endpoint_url
+        return endpoint, ("path" if (endpoint and "amazonaws.com" not in endpoint) else "")
+
     def _download_bytes(self, url: str, bucket: str, key: str) -> bytes:
         """Tải nội dung video vào RAM: HTTP public trước, fallback S3 API theo host."""
         is_http = url.startswith("http://") or url.startswith("https://")
@@ -148,10 +155,7 @@ class S3VideoStore(VideoStore):
             data = self._http_fetch(url)
             if data is not None:
                 return data
-            endpoint, style = endpoint_for_url(url)  # bucket riêng tư -> S3 API theo host URL
-        else:
-            endpoint = self._endpoint_url
-            style = "path" if (endpoint and "amazonaws.com" not in endpoint) else ""
+        endpoint, style = self._endpoint_for(url)
 
         import io  # noqa: WPS433
 
@@ -182,6 +186,35 @@ class S3VideoStore(VideoStore):
                 f.write(data)
             log.info("đã lưu cache: %s", cache_path)
         return data, filename
+
+    def object_exists(self, url: str) -> bool:
+        """True nếu object tại url/key (cùng bucket suy ra như fetch()) đã tồn tại.
+
+        Dùng để DrawZoneHandler bỏ qua vẽ+upload lại ảnh debug zone nếu đã có sẵn.
+        """
+        bucket, key = parse_s3_url(url, self._bucket, self._prefix)
+        if not bucket or not key:
+            return False
+        endpoint, style = self._endpoint_for(url)
+        try:
+            self._client(endpoint, style).head_object(Bucket=bucket, Key=key)
+            return True
+        except Exception:  # noqa: BLE001 — không tồn tại HOẶC lỗi truy vấn -> coi như chưa có
+            return False
+
+    def upload_bytes(self, url: str, data: bytes, content_type: str) -> None:
+        """Upload bytes lên đúng bucket/key suy từ url/key (cùng cơ chế resolve với fetch()).
+
+        Dùng cho artefact phụ đặt CẠNH video nguồn (vd ảnh debug zone) — không phải
+        evidence (đã có `S3PublicUploader` riêng, khác bucket/quy ước).
+        """
+        bucket, key = parse_s3_url(url, self._bucket, self._prefix)
+        if not bucket or not key:
+            raise ValueError(f"Không phân giải được S3 từ url: {url!r}")
+        endpoint, style = self._endpoint_for(url)
+        self._client(endpoint, style).put_object(
+            Bucket=bucket, Key=key, Body=data, ContentType=content_type,
+        )
 
 
 class S3PublicUploader(EvidenceUploader):
@@ -231,10 +264,15 @@ class S3PublicUploader(EvidenceUploader):
             self._conn = conn
         return self._conn
 
-    def upload(self, local_path: str, key: str, prefix: str = 'qc-automation') -> str:
-        log.info("S3 upload %s -> s3://%s/%s", local_path, self._bucket, key)
+    def upload(self, content: bytes, filename: str, key: str, prefix: str = 'qc-automation') -> str:
+        """Upload thẳng từ bytes trong RAM (không qua file tạm trên đĩa)."""
+        from adapters.storage.s3_storage import guess_video_content_type
+
+        log.info("S3 upload %s (%d bytes) -> s3://%s/%s", filename, len(content), self._bucket, key)
         # key đã gồm prefix đầy đủ (report_s3_prefix) -> connector không thêm prefix nữa.
-        url = self._connector().upload_video_from_path(local_path, f'{prefix}/{key}')
+        url = self._connector().upload_video(
+            content, f'{prefix}/{key}', guess_video_content_type(filename)
+        )
         if not url:
             raise RuntimeError(f"Upload S3 thất bại: {key}")
         return url

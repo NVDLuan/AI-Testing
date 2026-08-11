@@ -14,6 +14,8 @@ log = logging.getLogger("ai_testing.env")
 
 def load_dotenv(path: str = ".env") -> None:
     if not os.path.exists(path):
+        if path != ".env":  # người dùng chỉ định rõ (--env-file) -> báo để khỏi âm thầm thiếu secret
+            log.warning("File env không tồn tại: %s", path)
         return
     with open(path, "r", encoding="utf-8") as f:
         for raw in f:

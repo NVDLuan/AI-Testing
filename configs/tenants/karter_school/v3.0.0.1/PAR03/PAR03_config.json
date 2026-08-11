@@ -1,0 +1,114 @@
+{
+    "ksr_01": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_02": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_03": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_04": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_05": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_06": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_07": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_08": {
+      "target_class": [
+        "adult"
+      ],
+      "confidence_threshold": 0.4,
+      "violent_duration_threshold": 20,
+      "phone_usage_ratio_threshold": 0.5,
+      "phone_classify_threshold": 0.7,
+      "phone_iou_threshold": 0.15,
+      "event_cooldown_seconds": 300,
+      "tracking": "bytetrack",
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    }
+  }

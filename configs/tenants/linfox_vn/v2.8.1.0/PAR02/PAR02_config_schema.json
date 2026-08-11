@@ -1,0 +1,89 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PAR02 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "max_miss": {
+            "type": "integer",
+          "ui:section": "advanced"
+        },
+        "threshold": {
+            "type": "number",
+          "ui:section": "advanced"
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+          "ui:section": "advanced"
+        },
+        "cam_zones": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "Each point must have exactly two non-negative integers representing [x, y] coordinates."
+                }
+            },
+          "ui:section": "zone"
+        },
+        "target_class": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+          "ui:section": "advanced"
+        },
+        "fps": {
+            "type": "integer",
+            "minimum": 1,
+          "ui:section": "advanced"
+        },
+        "confirmation_time_seconds": {
+            "type": "integer",
+            "minimum": 0,
+          "ui:section": "advanced"
+        },
+        "padding_time_seconds": {
+            "type": "integer",
+            "minimum": 0,
+          "ui:section": "advanced"
+        },
+        "movement_threshold_bbox_ratio": {
+            "type": "number",
+            "minimum": 0,
+          "ui:section": "advanced"
+        },
+        "phone_detection_ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+          "ui:section": "advanced"
+        }
+    },
+    "required": [
+        "max_miss",
+        "threshold",
+        "cam_resolution",
+        "target_class",
+        "fps",
+        "confirmation_time_seconds",
+        "padding_time_seconds",
+        "movement_threshold_bbox_ratio",
+        "phone_detection_ratio",
+        "cam_zones"
+    ],
+    "additionalProperties": true
+}

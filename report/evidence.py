@@ -1,7 +1,11 @@
 """Điều phối đưa evidence video vào report: fetch (file-browser) -> upload S3 -> URL.
 
 `evidence_field` là tên field trong mỗi event (pred.events) chứa "ref" để tải video.
-Bạn điền field này ở bước poll_results; mặc định "evidence_path".
+Bạn điền field này ở bước poll_results; mặc định "evidence" (cả linfox_client lẫn
+handwashing_client đều gắn evidence path vào key "evidence").
+
+Toàn bộ đi thẳng qua RAM (fetch -> bytes -> upload), không ghi file tạm ra đĩa — đỡ
+tốn I/O khi publish nhiều evidence, cùng triết lý với `VideoStore.fetch` (video nguồn).
 
 Lỗi từng evidence được nuốt (log warning) để KHÔNG làm hỏng cả report — video nào
 publish được thì có link, video lỗi thì bỏ qua.
@@ -9,7 +13,6 @@ publish được thì có link, video lỗi thì bỏ qua.
 from __future__ import annotations
 
 import logging
-import os
 import re
 
 from interfaces.evidence import EvidenceFetcher, EvidenceUploader
@@ -28,15 +31,13 @@ class EvidencePublisher:
         self,
         fetcher: EvidenceFetcher,
         uploader: EvidenceUploader,
-        evidence_field: str = "evidence_path",
+        evidence_field: str = "evidence",
         key_prefix: str = "reports/evidence",
-        work_dir: str = "downloads/evidence",
     ) -> None:
         self._fetcher = fetcher
         self._uploader = uploader
         self._field = evidence_field
         self._key_prefix = key_prefix.strip("/")
-        self._work_dir = work_dir
 
     @staticmethod
     def _resolve(ev: dict, field: str):
@@ -73,21 +74,16 @@ class EvidencePublisher:
         """
         urls: list[str] = []
         for idx, ref in enumerate(self._refs(events)):
-            local = ""
             try:
-                local = self._fetcher.fetch(ref, self._work_dir)
-                if not local:
+                content, name = self._fetcher.fetch(ref)
+                if not content or not name:
                     continue
-                name = os.path.basename(local)
                 if idx:  # tránh đè khi nhiều evidence cùng tên trong 1 batch
                     name = f"{idx:02d}_{name}"
                 key = f"{self._key_prefix}/{_slug(customer_id)}/{_slug(batch_code)}/{_slug(rule_name)}/{name}"
-                url = self._uploader.upload(local, key)
+                url = self._uploader.upload(content, name, key)
                 if url:
                     urls.append(url)
             except Exception as exc:  # noqa: BLE001 — không để 1 evidence làm hỏng report
                 log.warning("evidence ref=%s lỗi publish: %s", ref, exc)
-            finally:
-                if local and os.path.exists(local):
-                    os.remove(local)
         return urls

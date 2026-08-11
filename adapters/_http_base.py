@@ -52,13 +52,7 @@ class BaseHttpClient:
 
     def health_check(self) -> HealthStatus:
         detail: dict = {}
-        # 1. /health công khai
-        r = self._session.get(self._url("/health"), timeout=10)
-        r.raise_for_status()
-        detail["health"] = r.json()
-        healthy = str(detail["health"].get("status", "")).lower() == "ok"
-
-        # 2. tài nguyên + deepstream (cần API key)
+        healthy = False
         if self._api_key:
             try:
                 r2 = self._session.get(self._url("/api/get-overall-health-status"), timeout=10)
@@ -74,6 +68,7 @@ class BaseHttpClient:
                             detail.setdefault("over_threshold", []).append(
                                 f"{field_name}={value}% > {RESOURCE_USAGE_THRESHOLD_PERCENT}%"
                             )
+                    healthy = True
                 else:
                     # Có key nhưng /api từ chối -> test thật sẽ fail, coi như không khoẻ.
                     detail["system_error"] = f"HTTP {r2.status_code}: {r2.text[:200]}"

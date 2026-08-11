@@ -1,0 +1,115 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CL01 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "_comment": {
+            "type": "string",
+            "description": "Comment or description for the camera",
+            "ui:section": "advanced_hidden",
+            "default": ""
+        },
+        "timezone": {
+            "type": "string",
+            "description": "Timezone for the camera location (e.g., 'utc-5')",
+            "ui:section": "normal",
+            "default": "utc-5"
+        },
+        "cam_zones": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "ui:section": "zone",
+            "title": "Camera Zones",
+            "default": []
+        },
+        "checking_zone": {
+            "type": "array",
+            "description": "Checking zone configuration",
+            "ui:section": "zone",
+            "default": []
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Camera resolution [width, height]",
+            "ui:section": "advanced_hidden",
+            "default": [
+                1920,
+                1080
+            ]
+        },
+        "fps": {
+            "type": "integer",
+            "description": "Frame rate of the video stream",
+            "ui:section": "advanced_hidden",
+            "default": 10
+        },
+        "schedule": {
+            "type": "array",
+            "description": "Schedule configurations for the given camera",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "one_shot",
+                            "periodic"
+                        ]
+                    },
+                    "time": {
+                        "type": "string"
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "interval_seconds": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "type",
+                    "end_time"
+                ]
+            },
+            "ui:section": "advanced",
+            "default": [
+                {
+                    "type": "one_shot",
+                    "time": "07:45",
+                    "end_time": "08:00"
+                },
+                {
+                    "type": "periodic",
+                    "start_time": "08:00",
+                    "end_time": "18:00",
+                    "interval_seconds": 1800
+                },
+                {
+                    "type": "one_shot",
+                    "time": "18:30",
+                    "end_time": "19:00"
+                }
+            ]
+        }
+    },
+    "required": [
+        "timezone",
+        "cam_zones",
+        "checking_zone",
+        "cam_resolution",
+        "fps",
+        "schedule"
+    ],
+    "additionalProperties": true
+}

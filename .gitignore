@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 reports/
+results/
 downloads/
 .idea/
 # credentials Google service account
@@ -9,3 +10,4 @@ downloads/
 service_account*.json
 .env
 video_raw/
+.env.*

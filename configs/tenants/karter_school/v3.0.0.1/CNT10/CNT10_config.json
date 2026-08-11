@@ -1,0 +1,386 @@
+{
+    "ksr_01": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_02": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_03": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_04": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_05": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_06": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_07": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_08": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_09": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_10": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_11": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    },
+    "ksr_12": {
+      "isRealtime": false,
+      "teacher_labels": [
+        "adult"
+      ],
+      "student_labels": [
+        "child"
+      ],
+      "age_classification_threshold": 0.3,
+      "confidence_threshold": 0.5,
+      "window_duration_seconds": 60,
+      "violation_rate_threshold": 0.6,
+      "reminder_interval_seconds": 120,
+      "buffer_duration": 65,
+      "cam_zones": [],
+      "utc_offset": 0,
+      "work_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "work_time": [
+        0,
+        24
+      ],
+      "cam_resolution": [1280, 720],
+      "fps": 10
+    }
+  }

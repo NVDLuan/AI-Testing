@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PL02 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "is_normalized": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether the coordinates are normalized (0.0-1.0) or absolute pixel values",
+      "ui:section": "advanced"
+    },
+    "max_miss": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "cam_resolution": {
+        "type": "array",
+        "items": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Camera resolution must have exactly two non-negative integers representing [width, height].",
+      "ui:section": "advanced"
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "number",
+                "minimum": 0
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Each point must have exactly two non-negative numbers representing [x, y] coordinates."
+        }
+      },
+      "ui:section": "zone"
+    },
+    "violent_count": {
+      "type": "integer",
+        "ui:section": "advanced"
+    },
+    "fps": {
+      "type": "integer",
+      "ui:section": "advanced"
+    },
+    "near_violation_window": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Seconds before VIOLATION_TIME during which a track is considered near-violation and the report batch waits for it.",
+      "ui:section": "advanced"
+    },
+    "max_wait_time": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum seconds to keep batching near-violation tracks before forcing the event report.",
+      "ui:section": "advanced"
+    },
+    "heartbeat_interval": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Seconds between heartbeat log summaries of pallet/product_package tracks on the floor (0 disables).",
+      "ui:section": "advanced"
+    },
+    "realert_interval": {
+      "type": "integer",
+      "minimum": -1,
+      "description": "Seconds to wait before re-alerting on a previously reported violation (-1 disables).",
+      "ui:section": "advanced"
+    },
+    "target_class": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "ui:section": "advanced"
+    }
+  },
+  "required": [
+    "is_normalized",
+    "fps",
+    "max_miss",
+    "cam_resolution",
+    "cam_zones",
+    "violent_count",
+    "near_violation_window",
+    "max_wait_time",
+    "heartbeat_interval",
+    "realert_interval",
+    "target_class"
+  ],
+  "additionalProperties": true
+}

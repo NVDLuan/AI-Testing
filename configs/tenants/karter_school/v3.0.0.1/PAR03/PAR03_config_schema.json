@@ -1,0 +1,78 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PAR03 Configuration Schema",
+    "type": "object",
+    "properties": {
+        "timezone": {
+            "type": "string",
+            "description": "Timezone for the camera location (e.g., 'utc-5')",
+            "ui:section": "normal",
+            "default": "utc-5"
+        },
+        "fps": {
+            "type": "integer",
+            "ui:section": "advanced_hidden",
+            "default": 10
+        },
+        "cam_resolution": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "ui:section": "advanced_hidden",
+            "default": [1920, 1080]
+        },
+        "cam_zones": {
+            "type": "array",
+            "ui:section": "zone",
+            "title": "Camera Zones",
+            "default": []
+        },
+        "confidence_threshold": {
+            "type": "number",
+            "ui:section": "advanced_hidden",
+            "default": 0.4
+        },
+        "event_cooldown_seconds": {
+            "type": "number",
+            "ui:section": "advanced_hidden",
+            "default": 300
+        },
+        "violent_duration_threshold": {
+            "type": "integer",
+            "ui:section": "normal",
+            "title": "Violent Duration Threshold (seconds)",
+            "default": 5
+        },
+        "phone_iou_threshold": {
+            "type": "number",
+            "ui:section": "advanced_hidden",
+            "default": 0.15
+        },
+        "phone_usage_ratio_threshold": {
+            "type": "number",
+            "ui:section": "advanced_hidden",
+            "default": 0.5
+        },
+        "phone_classify_threshold": {
+            "type": "number",
+            "ui:section": "advanced_hidden",
+            "default": 0.5
+        }
+    },
+    "required": [
+        "timezone",
+        "fps",
+        "cam_resolution",
+        "cam_zones",
+        "confidence_threshold",
+        "event_cooldown_seconds",
+        "violent_duration_threshold",
+        "phone_iou_threshold",
+        "phone_usage_ratio_threshold",
+        "phone_classify_threshold"
+    ],
+    "additionalProperties": true
+}

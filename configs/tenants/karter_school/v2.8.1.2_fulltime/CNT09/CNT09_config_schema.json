@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CNT09 Configuration Schema",
+  "type": "object",
+  "properties": {
+    "_comment": {
+      "type": "string",
+      "ui:section": "advanced_hidden",
+      "default": ""
+    },
+    "utc_offset": {
+      "type": "integer",
+      "description": "Timezone for the camera location (e.g., '-5')",
+      "ui:section": "normal",
+      "default": -4
+    },
+    "work_days": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "ui:section": "advanced_hidden",
+      "default": [0, 1, 2, 3, 4]
+    },
+    "work_time": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "ui:section": "advanced_hidden",
+      "default": [7, 18]
+    },
+    "cam_zones": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "ui:section": "advanced_hidden",
+    "default": []
+    },
+    "cam_resolution": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "minItems": 2,
+      "maxItems": 2,
+      "ui:section": "advanced_hidden",
+      "default": [1280, 720]
+    },
+    "fps": {
+      "type": "integer",
+      "ui:section": "advanced_hidden",
+      "default": 10
+    },
+    "teacher_labels": {
+      "type": "array",
+      "items": {"type": "string"},
+      "ui:section": "advanced_hidden",
+      "default": ["adult"]
+    },
+    "student_labels": {
+      "type": "array",
+      "items": {"type": "string"},
+      "ui:section": "advanced_hidden",
+      "default": ["child"]
+    },
+    "age_classification_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.3
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "ui:section": "advanced_hidden",
+      "default": 0.5
+    },
+    "default_teacher_count": {
+      "type": "integer",
+      "ui:section": "normal",
+      "title": "Min Teacher Required",
+      "default": 1
+    },
+    "default_student_count": {
+      "type": "integer",
+      "ui:section": "normal",
+      "title": "Max Student per Teacher",
+      "default": 10
+    },
+    "time_periods": {
+      "type": "array",
+      "ui:section": "normal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start_time": {"type": "string"},
+          "end_time": {"type": "string"},
+          "teacher_count": {"type": "integer"},
+          "student_count": {"type": "integer"},
+          "comment": {"type": "string"}
+        },
+        "required": ["start_time", "end_time", "teacher_count", "student_count"]
+      },
+      "default": [
+        {"start_time": "13:00", "end_time": "15:00", "teacher_count": 1, "student_count": 10, "comment": "Nap time"}
+      ]
+    },
+    "window_duration_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "title": "Observation Window Duration",
+      "ui:section": "normal",
+      "default": 600
+    },
+    "violation_rate_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "title": "Violation Rate Threshold",
+      "ui:section": "normal",
+      "default": 0.6
+    },
+    "min_observation_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "title": "Minimum Observation Duration",
+      "ui:section": "advanced",
+      "default": 600
+    },
+    "reliability_weights": {
+      "type": "array",
+      "title": "Reliability Weights",
+      "ui:section": "advanced",
+      "items": {"type": "number", "minimum": 0, "maximum": 1},
+      "minItems": 3,
+      "maxItems": 3,
+      "default": [0.4, 0.3, 0.3]
+    },
+    "entropy_window_frames": {
+      "type": "integer",
+      "minimum": 3,
+      "title": "Entropy Window Frames",
+      "ui:section": "advanced",
+      "default": 10
+    },
+    "roi_area_pixels": {
+      "type": "integer",
+      "minimum": 1,
+      "title": "ROI Area Pixels",
+      "ui:section": "advanced_hidden",
+      "default": null
+    },
+    "buffer_duration": {
+      "type": "integer",
+      "minimum": 1,
+      "ui:section": "advanced_hidden",
+      "default": 600
+    },
+    "evidence_fps": {
+      "type": "integer",
+      "minimum": 1,
+      "ui:section": "advanced_hidden",
+      "default": 5
+    },
+    "evidence_speedup": {
+      "type": "integer",
+      "minimum": 1,
+      "ui:section": "advanced_hidden",
+      "default": 12
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "utc_offset",
+    "work_days",
+    "work_time",
+    "cam_resolution",
+    "fps",
+    "teacher_labels",
+    "student_labels",
+    "age_classification_threshold",
+    "confidence_threshold",
+    "default_teacher_count",
+    "default_student_count",
+    "time_periods",
+    "window_duration_seconds",
+    "violation_rate_threshold",
+    "min_observation_seconds",
+    "reliability_weights",
+    "entropy_window_frames",
+    "buffer_duration",
+    "evidence_fps",
+    "evidence_speedup"
+  ]
+}

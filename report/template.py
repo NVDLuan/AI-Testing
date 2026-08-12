@@ -14,8 +14,9 @@ Rule chỉ có 1 layer (mặc định linfox/EWS) giữ nguyên tên `rule.code`
 
 Note của từng dòng test case (expect/actual/validation) khác nhau theo flow — phần đó
 KHÔNG nằm ở đây nữa mà tách ra `report/notes_linfox.py` (mặc định, linfox/EWS/karter)
-và `report/notes_handwashing.py` (riêng bv_c, đọc theo layer Sequence/Count/Violation &
-cond). File này chỉ còn lo phần khung schema CHUNG (batch/rule/video/timing...), gọi
+và `report/notes_handwashing.py` (riêng bv_c, đọc theo layer Sequence/Count/Violation —
+layer Violation có QC note 2 dòng: check logic output tự đối chiếu + cảnh báo count lệch
+nhiều). File này chỉ còn lo phần khung schema CHUNG (batch/rule/video/timing...), gọi
 đúng module note theo `is_handwashing(gt)`.
 """
 from __future__ import annotations
@@ -24,7 +25,7 @@ import json
 import os
 import time
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Tuple
 
 from report.notes_handwashing import handwashing_notes, is_handwashing
 from report.notes_linfox import default_notes
@@ -73,7 +74,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
     test_case_description = _raw_get(raw, "Test Case Description", "Short description")
     if is_handwashing(gt):
         # bv_c: QC note = so sánh expected/actual rồi diễn giải lý do sai (giữ nguyên).
-        expect_note, actual_note, validation_note = handwashing_notes(gt, comp, pred, strategy, outcome)
+        expect_note, actual_note, validation_note = handwashing_notes(gt, pred, strategy, outcome)
     else:
         # linfox/EWS/karter: QC note = Test Case Description khai trong sheet, không
         # phải câu diễn giải outcome (khác bv_c) — expect/actual vẫn theo outcome.
@@ -124,7 +125,7 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
 def _rule_detail(
         ctx: "PipelineContext", rule, stamp: str, status: str,
         report: "ValidationReport", label: str,
-) -> dict[str, Any]:
+) -> Tuple[dict[str, Any], str]:
     tenant = ctx.tenant
     version_config = tenant.config or tenant.version
     videos = ctx.videos_by_rule.get(rule.code, [])
@@ -186,12 +187,18 @@ def _rule_detail(
     # thêm suffix layer khi label khác rule.code (chain >1 phần tử); rule đơn layer giữ
     # nguyên batch_code như trước (không đổi output cho linfox/EWS).
     real_batch_code = ctx.batch_codes.get(rule.code, f"{rule.code}_{stamp}")
-    batch_code = real_batch_code if label == rule.code else f"{real_batch_code} - {label.split(' - ', 1)[1]}"
+    # label = "<rule.code>" (đơn layer) hoặc "<rule.code> - <layer>" (chain, xem
+    # build_template) -> rule_name hiển thị tên NGƯỜI ĐỌC được (rule.name, vd "OVER
+    # RATIO") thay vì rule.code (vd "CNT08"); rule_code giữ NGUYÊN `label` vì dashboard
+    # dùng nó làm khoá tra cứu duy nhất giữa các layer cùng 1 rule (selectRule, find()).
+    layer_suffix = "" if label == rule.code else label.split(" - ", 1)[1]
+    batch_code = real_batch_code if not layer_suffix else f"{real_batch_code} - {layer_suffix}"
+    rule_name = rule.name if not layer_suffix else f"{rule.name} - {layer_suffix}"
     return {
-        "batch_code": batch_code,
+        "batch_code": real_batch_code,
         "timestamp": stamp,
         "tenant": tenant.name,
-        "rule_name": label,
+        "rule_name": rule_name,
         "rule_code": label,
         "rule_type": rule.type,
         "tenant_dir": tenant.dir or tenant.load_dir,
@@ -223,7 +230,7 @@ def _rule_detail(
         "test_case_validation_result": rows,
         "status": status,
         "expected_events": {},
-    }
+    }, batch_code
 
 
 def _health_block(ctx: "PipelineContext") -> dict[str, Any]:
@@ -262,12 +269,13 @@ def build_template(ctx: "PipelineContext", stamp: str) -> dict[str, Any]:
             continue
         for name, report in ctx.reports.items():
             label = f"{rule.code} - {name}" if multi_layer else rule.code
-            detail = _rule_detail(ctx, rule, stamp, status, report, label)
-            details[detail["batch_code"]] = detail
+            detail, batch_code = _rule_detail(ctx, rule, stamp, status, report, label)
+            details[batch_code] = detail
             summary[label] = detail["status"]
 
     return {
         "version_run": {
+            "tenant": tenant.name,
             "job": ctx.job.name,
             "version_ai": tenant.version,
             "version_config": tenant.config or tenant.version,

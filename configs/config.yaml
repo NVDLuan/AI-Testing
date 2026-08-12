@@ -25,9 +25,9 @@ tenants:
   - name: "BV C"
     jobs:
       - name: "REGRESSION"
-        sheet_id: '1uT3LsSTa4wq2uMgvGyeHA6OGDs_dHEQzBFFu92miS9Q'
-    config: 'v2.1.0'
-    version: '2.1.0'
+        sheet_id: '1NHUEi92j4vwnXv4LMZSqE4lcBcUH-PVjDOygyfBUwrU'
+    config: 'V2.1.2'
+    version: 'V2.1.2'
     load_dir: 'bv_c'
     dir: "bv_c"
 

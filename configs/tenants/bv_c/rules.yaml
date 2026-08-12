@@ -1,7 +1,7 @@
 rules:
-  - name: 'Hygiene'
+  - name: 'Auto Hygiene'
     code: 'Hygiene'
-    sheet: 'HandWashing2.1.0'
+    sheet: 'data_GT_v2.1.1'
     type: 'SHORT'
     time_sleep: 7
     batch_debug: 'Linfox_Viet_Nam_USEPHONE_20260210_160428'

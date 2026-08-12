@@ -32,39 +32,16 @@ def test_violation_strategy_out_of_scope():
     assert strat.classify(_gt(True), _pred(False)) == []
 
 
-def test_violation_strategy_in_scope_no_cond():
-    # Không khai cột B -> cond luôn đạt, chỉ chấm theo violation flag.
+def test_violation_strategy_in_scope():
+    # Chấm 1 lần/video theo pred.has_violation (giống BinaryViolationStrategy, không
+    # có điều kiện phụ nào về count).
     strat = ViolationStrategy()
-    gt = _gt(True, expected_violation=True)
-    ok_event = [{"event_code": "e1", "violation": True}]
-    bad_event = [{"event_code": "e1", "violation": False}]
-    assert strat.classify(gt, _pred(True, events=ok_event)) == ["TP"]
-    # violation flag SAI (GT cần vi phạm nhưng event không vi phạm) -> FN (không phải FP).
-    assert strat.classify(gt, _pred(True, events=bad_event)) == ["FN", "FN"]
-    # có trigger nhưng không event nào để chấm -> FP.
-    assert strat.classify(gt, _pred(True, events=[])) == ["FP"]
-
-
-def test_violation_strategy_cond_violation():
-    # GT: Violation -> cond đạt khi count lệch expected <= 1.
-    strat = ViolationStrategy()
-    gt = _gt(True, expected_violation=True, raw={"B1": 2})
-    flag_ok_cond_ok = [{"violation": True, "counts": {"B1": 3}}]    # lệch 1 -> đạt
-    flag_ok_cond_bad = [{"violation": True, "counts": {"B1": 5}}]   # lệch 3 -> không đạt
-    assert strat.classify(gt, _pred(True, events=flag_ok_cond_ok)) == ["TP"]
-    # violation flag ĐÚNG nhưng cond SAI -> FP (không tin kết luận vi phạm này).
-    assert strat.classify(gt, _pred(True, events=flag_ok_cond_bad)) == ["FP", "FN"]
-
-
-def test_violation_strategy_cond_no_violation():
-    # GT: No Violation -> cond đạt khi MỌI count >= 5.
-    strat = ViolationStrategy()
-    gt = _gt(True, expected_violation=False, raw={"B1": 6, "B2": 7})
-    flag_ok_cond_ok = [{"violation": False, "counts": {"B1": 6, "B2": 8}}]
-    flag_ok_cond_bad = [{"violation": False, "counts": {"B1": 2, "B2": 8}}]  # B1 < 5
-    assert strat.classify(gt, _pred(True, events=flag_ok_cond_ok)) == ["TN"]
-    # violation flag ĐÚNG (đều false) nhưng cond SAI -> FP.
-    assert strat.classify(gt, _pred(True, events=flag_ok_cond_bad)) == ["FP"]
+    gt_v = _gt(True, expected_violation=True)
+    gt_nv = _gt(True, expected_violation=False)
+    assert strat.classify(gt_v, _pred(True, has_violation=True)) == ["TP"]
+    assert strat.classify(gt_v, _pred(True, has_violation=False)) == ["FN"]
+    assert strat.classify(gt_nv, _pred(True, has_violation=True)) == ["FP"]
+    assert strat.classify(gt_nv, _pred(True, has_violation=False)) == ["TN"]
 
 
 def test_sequence_strategy_skips_without_step_sequence():
@@ -109,9 +86,7 @@ def test_count_strategy_skips_without_b_columns():
 if __name__ == "__main__":
     test_trigger_strategy()
     test_violation_strategy_out_of_scope()
-    test_violation_strategy_in_scope_no_cond()
-    test_violation_strategy_cond_violation()
-    test_violation_strategy_cond_no_violation()
+    test_violation_strategy_in_scope()
     test_sequence_strategy_skips_without_step_sequence()
     test_sequence_strategy_subsequence()
     test_sequence_strategy_exact()

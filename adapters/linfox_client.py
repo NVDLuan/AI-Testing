@@ -22,17 +22,18 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         self._batch_rule: dict[str, RuleDef] = {}
 
     @staticmethod
-    def _video_camera_code(camera_id: str, video_name: str) -> str:
+    def _video_camera_code(camera_id: str, rule_code: str, video_name: str) -> str:
         """Camera code ẢO riêng cho TỪNG video, thay vì dùng chung camera_id thật.
 
         Vendor xử lý theo từng camera_code; ít camera thật nhưng nhiều video/camera
         khiến xử lý bị dồn tuần tự qua camera đó -> mỗi video được gán 1 code riêng
-        (ghép camera_id thật + tên video, đã chuẩn hoá) để vendor coi mỗi video là
-        1 "camera" -> chạy song song được. PHẢI dùng cùng logic này ở cả `trigger()`
-        (video -> camera_code gửi /api/videos/analyze) lẫn `update_rule_config()`
-        (camera_code -> config gửi /api/rule) để 2 bên khớp nhau.
+        (ghép camera_id thật + rule_code + tên video, đã chuẩn hoá) để vendor coi mỗi
+        video là 1 "camera" -> chạy song song được. Có rule_code trong code để phân
+        biệt cùng 1 video nhưng chạy ở rule khác nhau. PHẢI dùng cùng logic này ở cả
+        `trigger()` (video -> camera_code gửi /api/videos/analyze) lẫn
+        `update_rule_config()` (camera_code -> config gửi /api/rule) để 2 bên khớp nhau.
         """
-        return f"{camera_id or 'unknown'}__{norm_name(video_name)}"
+        return f"{camera_id or 'unknown'}__{rule_code or 'unknown'}__{norm_name(video_name)}"
 
     def update_rule_config(self, rule: RuleDef, videos: list[VideoRef]) -> None:
         # config = nội dung <CODE>_config.json, nhưng key lại theo camera_code ẢO
@@ -48,7 +49,7 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
             if cam is None:
                 missing_cam.add(v.camera_id or "unknown")
                 continue
-            config[self._video_camera_code(v.camera_id, v.name)] = cam.raw
+            config[self._video_camera_code(v.camera_id, rule.code, v.name)] = cam.raw
         if missing_cam:
             log.warning(
                 "rule %s: %d camera_id không có config (%s) -> video tương ứng bị bỏ qua khi update /api/rule",
@@ -92,7 +93,7 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         # có 1 video, tránh dồn xử lý tuần tự qua vài camera_id thật.
         videos_config: dict[str, list[str]] = {}
         for v in videos:
-            cam_code = self._video_camera_code(v.camera_id, v.name)
+            cam_code = self._video_camera_code(v.camera_id, rule.code, v.name)
             videos_config.setdefault(cam_code, []).append(v.name.split(".mp4")[0])
         resp = self._session.post(
             self._url("/api/videos/analyze"),

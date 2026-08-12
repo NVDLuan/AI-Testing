@@ -165,15 +165,10 @@ mặc định đủ 4 layer `trigger,violation,sequence_exact,count`):
 | Token | Class | Outcome | Phạm vi |
 |---|---|---|---|
 | `trigger` | `TriggerStrategy` | có/không trigger đúng lúc | mọi video |
-| `violation` | `ViolationStrategy` | `event.violation` so với GT **+ 1 điều kiện phụ (`cond`) về count** | chỉ video GT cần trigger & model có trigger |
+| `violation` | `ViolationStrategy` | `pred.has_violation` so với `gt.expected_violation` (thuần boolean, positive = có vi phạm) | chỉ video GT cần trigger & model có trigger |
 | `sequence` | `SequenceStrategy(exact=False)` | `Step Sequence` là subsequence của event | như trên + sheet có khai Step Sequence |
 | `sequence_exact` | `SequenceStrategy(exact=True)` | tập bước khớp CHÍNH XÁC | như trên |
 | `count` | `CountStrategy` | mọi cột `B0..B6` cùng phía ngưỡng 5 | như trên + sheet có khai cột B |
-
-`ViolationStrategy` chấm theo ma trận chuẩn (positive = có vi phạm) NHƯNG violation flag
-khớp GT vẫn có thể bị hạ thành **FP** nếu `cond` (count) không xác nhận: GT **No
-Violation** đòi mọi count (`B0..B6`) `>= 5`; GT **Violation** đòi mọi count lệch expected
-`<= 1`. Không khai cột B nào -> `cond` coi như luôn đạt (chỉ chấm theo violation flag).
 
 Mỗi strategy trong chain chạy `validate()` riêng, sinh 1 `ValidationReport` riêng —
 report coi mỗi cái là **1 "rule ảo"**, tên `"<rule_code> - <Name>"` (vd

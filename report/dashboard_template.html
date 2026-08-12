@@ -1903,7 +1903,7 @@
         <aside class="sidebar">
             <div class="brand-logo">
                 <i class="fa-solid fa-brain-circuit fa-lg"></i>
-                <span>EME AI Auto QC</span>
+                <span>IDP AI Testing Automation</span>
             </div>
 
             <nav class="sidebar-menu">
@@ -2364,9 +2364,10 @@
                         <span id="active-rule-title">Loading Rule...</span>
                         <span class="rule-badge" id="active-rule-code">...</span>
                     </div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;"
+                    <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500; display: flex; align-items: center; gap: 16px;"
                         id="active-rule-duration-info">
-                        <i class="fa-solid fa-clock"></i> Duration: <strong id="active-rule-duration">0s</strong>
+                        <span><i class="fa-solid fa-tag"></i> Batch: <strong id="active-rule-batch-code">-</strong></span>
+                        <span><i class="fa-solid fa-clock"></i> Duration: <strong id="active-rule-duration">0s</strong></span>
                     </div>
                 </div>
 
@@ -2792,6 +2793,9 @@
         // Initialize overall metadata
         function initDashboardMeta() {
             const versionRun = reportData.version_run || {};
+            document.getElementById('job-title').textContent = versionRun.tenant
+                ? `${versionRun.tenant} - AI Rules Test Automation Report`
+                : 'AI Rules Test Automation Report';
             document.getElementById('sb-ai-version').textContent = versionRun.version_ai || '1.0.0.0';
             document.getElementById('val-ai-version').textContent = versionRun.version_ai || '1.0.0.0';
             document.getElementById('val-config-version').textContent = versionRun.version_config || 'N/A';
@@ -3235,6 +3239,7 @@
             // Update active header workspace
             document.getElementById('active-rule-title').textContent = batch.rule_name;
             document.getElementById('active-rule-code').textContent = batch.rule_code;
+            document.getElementById('active-rule-batch-code').textContent = batch.batch_code || '-';
             document.getElementById('active-rule-duration').textContent = batch.timing ? batch.timing.duration_formatted : 'N/A';
 
             // Populate the Horizontal AI Details Metrics Bar
@@ -3379,7 +3384,7 @@
                         <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${formatNoteLines(item.actual_note) || 'N/A'}</div>
                     </td>
                     <td class="td-note">
-                        <div style="font-weight: 700; color: var(--text-main);">${item.validation_note || 'Runs model correctly'}</div>
+                        <div style="font-weight: 700; color: var(--text-main);">${formatNoteLines(item.validation_note) || 'Runs model correctly'}</div>
                     </td>
                     <td style="text-align: center; vertical-align: middle;">
                         <button class="btn-action" onclick="openInspector(${index})" style="margin: 0 auto; display: inline-flex;">
@@ -3545,7 +3550,7 @@
                 ${renderNoteDetailLines(item.actual_note)}
             `;
             if (item.validation_note) {
-                qcDetailsHtml += `<div style="color: #B4502F; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> QC Assessment: ${item.validation_note}</div>`;
+                qcDetailsHtml += `<div style="color: #B4502F; font-weight: 700; margin-top: 8px;"><i class="fa-solid fa-triangle-exclamation"></i> QC Assessment:</div>${renderNoteDetailLines(item.validation_note)}`;
             }
             noteContent.innerHTML = qcDetailsHtml;
 

@@ -2292,13 +2292,13 @@
                                     style="font-size: 0.55rem; font-weight: 700; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">100%
                                     Pass</span>
                                 <span style="font-size: 0.725rem; font-weight: 800; color: #C5F4E4;"
-                                    id="stat-perfect-rules-val">0 Rules</span>
+                                    id="stat-perfect-rules-val">0 Batches</span>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 1px;">
                                 <span
                                     style="font-size: 0.55rem; font-weight: 700; color: #99AFAB; text-transform: uppercase; letter-spacing: 0.5px;">Warnings</span>
                                 <span style="font-size: 0.725rem; font-weight: 800; color: #FFD4C5;"
-                                    id="stat-warning-rules-val">0 Rules</span>
+                                    id="stat-warning-rules-val">0 Batches</span>
                             </div>
                         </div>
 
@@ -2489,8 +2489,8 @@
                 <div class="inspector-panel">
                     <div class="inspector-panel-header">
                         <span><i class="fa-solid fa-file-video"></i> Raw Video</span>
-                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted);"
-                            id="ins-val-expected-badge">EXPECTED: Approve</span>
+<!--                        <span style="font-size: 0.7rem; font-weight: 800; color: var(&#45;&#45;text-muted);"-->
+<!--                            id="ins-val-expected-badge">EXPECTED: Approve</span>-->
                     </div>
                     <div class="inspector-viewer">
                         <video id="ins-video-raw-player" controls autoplay muted loop>
@@ -2534,8 +2534,8 @@
                                 onclick="openOldEvidence()">
                                 <i class="fa-solid fa-clock-rotate-left"></i> Old Evidence
                             </button>
-                            <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted);"
-                                id="ins-val-matched-badge">Frames: 0/0</span>
+<!--                            <span style="font-size: 0.7rem; font-weight: 800; color: var(&#45;&#45;text-muted);"-->
+<!--                                id="ins-val-matched-badge">Frames: 0/0</span>-->
                         </div>
                     </div>
                     <div class="inspector-viewer">
@@ -2811,8 +2811,14 @@
             let totalBatches = 0;
             let perfectBatchesCount = 0;
             let warningBatchesCount = 0;
+            const uniqueRuleCodes = new Set();
 
             Object.values(reportData.details).forEach(batch => {
+                // rule_config.rule_code là mã rule THẬT (vd "Hygiene"), không dính suffix
+                // layer như rule_code/batch_code cấp ngoài (vd "Hygiene - Trigger") — dùng
+                // để đếm số RULE thật, phân biệt với số BATCH (rule x layer).
+                const realRuleCode = (batch.rule_config && batch.rule_config.rule_code) || batch.rule_code;
+                uniqueRuleCodes.add(realRuleCode);
                 const stats = batch.test_statistics || {};
                 const total = stats.total || 0;
                 const passed = stats.passed || 0;
@@ -2886,9 +2892,12 @@
             document.getElementById('stat-weighted-avg-bar').style.width = `${parseFloat(passRate)}%`;
 
             // Set values in the micro Rule KPI Grid of Aggregate Card
-            document.getElementById('stat-total-rules-val').textContent = `${totalBatches} Rules`;
-            document.getElementById('stat-perfect-rules-val').textContent = `${perfectBatchesCount} Rules`;
-            document.getElementById('stat-warning-rules-val').textContent = `${warningBatchesCount} Rules`;
+            // "Rules" = số rule.code THẬT duy nhất; "Batches" = số batch (rule x layer,
+            // vd bv_c chain "Hygiene - Trigger"/"Hygiene - Violation" cùng 1 rule ra 2
+            // batch) — tách riêng 2 số để không hiểu lầm 1 rule chạy thành nhiều rule.
+            document.getElementById('stat-total-rules-val').textContent = `${uniqueRuleCodes.size} Rules`;
+            document.getElementById('stat-perfect-rules-val').textContent = `${perfectBatchesCount} Batches`;
+            document.getElementById('stat-warning-rules-val').textContent = `${warningBatchesCount} Batches`;
 
             // Cập nhật động Server Health Status từ file JSON của người dùng
             const health = reportData.health || {};
@@ -3443,8 +3452,8 @@
             qcBadge.className = isPassedResult(item.detect_result) ? 'badge-result passed' : 'badge-result failed';
 
             // Expected / Frame details header info
-            document.getElementById('ins-val-expected-badge').textContent = `EXPECTED: ${item.expected_status}`;
-            document.getElementById('ins-val-matched-badge').textContent = `Frames: ${item.matched_frames}/${item.total_frames}`;
+            // document.getElementById('ins-val-expected-badge').textContent = `EXPECTED: ${item.expected_status}`;
+            // document.getElementById('ins-val-matched-badge').textContent = `Frames: ${item.matched_frames}/${item.total_frames}`;
 
             // Check and handle Old Evidence Button
             const oldEvidenceBtn = document.getElementById('btn-old-evidence');

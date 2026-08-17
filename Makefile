@@ -54,8 +54,8 @@ run-skip-health: ## Chạy thật (gsheet_public + http + S3). Vd: make run-real
 
 run: run-real ## Alias của run-mock (mặc định an toàn, không cần secret)
 
-linfox:
-	$(MAKE) run-real TENANT=linfox_vn JOB=SMOKE
+lfvn:
+	$(MAKE) run-real TENANT=linfox_vn JOB=REGRESSION ENV_FILE=.env.lfvn
 
 ews:
 	$(MAKE) run-real TENANT=ews_usa JOB=SMOKE

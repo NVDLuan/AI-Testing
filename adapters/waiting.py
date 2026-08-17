@@ -6,6 +6,8 @@ from abc import ABC
 
 import requests
 
+from adapters._http_base import BaseHttpClient
+
 logger = logging.getLogger("Waiting")
 
 
@@ -15,7 +17,7 @@ class WaitingBase(ABC):
         raise NotImplementedError()
 
 
-class WaitingKafka(WaitingBase):
+class WaitingKafka(WaitingBase, BaseHttpClient):
 
     def __init__(
             self,
@@ -23,18 +25,20 @@ class WaitingKafka(WaitingBase):
             confirm_time: int = 300,
             poll_interval: int = 60,
             timeout: int = 50,
+            endpoint: str = "status",
+            api_key: str = "",
     ):
-        self.kafka_watch_api_url = kafka_watch_api_url
+        super().__init__(
+            base_url=kafka_watch_api_url,
+            api_key=api_key,
+            poll_interval_sec=poll_interval,
+            timeout_sec=timeout,
+        )
         self.confirm_time = confirm_time
-        self.poll_interval = poll_interval
-        self.timeout = timeout
-        self.session = requests.Session()
+        self.endpoint = endpoint
 
     def get_status_message(self) -> dict:
-        url_status_message = f"{self.kafka_watch_api_url}/status"
-        response = self.session.get(
-            url=url_status_message, timeout=self.timeout
-        )
+        response = self._session.get(self._url(self.endpoint), timeout=self._timeout_sec)
         response.raise_for_status()
         return response.json()
 
@@ -54,7 +58,7 @@ class WaitingKafka(WaitingBase):
                 logger.info("Kafka lag increased after confirm; continuing wait...")
                 continue
 
-            time.sleep(self.poll_interval)
+            time.sleep(self._poll_interval_sec)
 
 
 class WaitingTimeout(WaitingBase):
@@ -120,7 +124,7 @@ class WaitingGrafana(WaitingBase):
                 {
                     "datasource": {
                         "type": "loki",
-                        "uid": "ee9uaeacloq9se", # hardcode loki uid => find in line 108
+                        "uid": "ee9uaeacloq9se",  # hardcode loki uid => find in line 108
                     },
                     "editorMode": "code",
                     "expr": f'{{server="{self.server_name}",container=~"{self.service_name}"}}',
@@ -172,7 +176,8 @@ class WaitingGrafana(WaitingBase):
                 logger.info("Waiting for other service processing finish...")
                 time.sleep(self.confirm_time)
                 log_confirm = self._query_logs()
-                if any("[DONE] ds-app IDLE — nothing left to process" in item for item in log_confirm): # TODO: cần check lại phần này để validate cho từng dự án
+                if any("[DONE] ds-app IDLE — nothing left to process" in item for item in
+                       log_confirm):  # TODO: cần check lại phần này để validate cho từng dự án
                     return
             logger.info("AI processing.... Retry after %ss seconds", self.poll_interval)
 
@@ -221,5 +226,6 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     a = WaitingGrafana("https://grafana.rainscales.com", "nvdluan2", "nvdluan2", "server-thor-ops-edge-0024",
-                       "karter-ds-app-1", ["[DONE] STAGE 1/3 (ds-app, detection) FINISHED ALL", "[DONE] ds-app IDLE — nothing left to process"])
+                       "karter-ds-app-1", ["[DONE] STAGE 1/3 (ds-app, detection) FINISHED ALL",
+                                           "[DONE] ds-app IDLE — nothing left to process"])
     a.wait()

@@ -395,3 +395,8 @@ class BvCFactory(TenantFactory):
             evidence_field=opts.evidence_field,
             key_prefix=opts.report_s3_prefix,
         )
+
+    def create_waiting(self, tenant: TenantConfig, opts: RunOptions) -> WaitingBase:
+        from adapters.waiting import WaitingKafka
+        return WaitingKafka(opts.kafka_watcher_api_url, endpoint="api/hand-washing/kafka/upload-topic-lag",
+                            api_key=opts.api_key)

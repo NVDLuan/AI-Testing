@@ -22,6 +22,8 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
 
 from configs.env import load_dotenv
 from configs.loader import ConfigLoader
@@ -81,6 +83,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--report-s3-prefix", default="reports/evidence", help="Prefix key evidence trên S3")
     p.add_argument("--s3-public-base", default="", help="Domain/CloudFront công khai để dựng URL")
     p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("--log-file", action="store_true",
+                   help="Ghi thêm log ra file trong thư mục logs/ (mặc định chỉ in ra stdout)")
     return p.parse_args(argv)
 
 
@@ -108,14 +112,25 @@ def _resolve_rules(loader: ConfigLoader, tenant: TenantConfig, rule_filter: list
     return selected
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv if argv is not None else sys.argv[1:])
-    load_dotenv(args.env_file)  # nạp secret từ file .env chỉ định trước khi đọc os.environ
+def _setup_logging(log_file: bool) -> None:
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    if log_file:
+        filename = datetime.now().strftime("%Y%m%d-%H%M%S") + ".log"
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(log_dir / filename, encoding="utf-8"))
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv if argv is not None else sys.argv[1:])
+    load_dotenv(args.env_file)  # nạp secret từ file .env chỉ định trước khi đọc os.environ
+    _setup_logging(args.log_file)
 
     loader = ConfigLoader(args.config)
     root = loader.load_root()

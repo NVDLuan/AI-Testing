@@ -11,3 +11,4 @@ service_account*.json
 .env
 video_raw/
 .env.*
+logs/

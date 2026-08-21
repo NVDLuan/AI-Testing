@@ -249,7 +249,7 @@ class S3PublicUploader(EvidenceUploader):
         if self._conn is None:
             if not self._bucket:
                 raise ValueError("S3PublicUploader cần bucket")
-            from adapters.storage.s3_storage import S3StorageConnector
+            from .s3_storage import S3StorageConnector
 
             conn = S3StorageConnector(
                 bucket=self._bucket,
@@ -266,7 +266,7 @@ class S3PublicUploader(EvidenceUploader):
 
     def upload(self, content: bytes, filename: str, key: str, prefix: str = 'qc-automation') -> str:
         """Upload thẳng từ bytes trong RAM (không qua file tạm trên đĩa)."""
-        from adapters.storage.s3_storage import guess_video_content_type
+        from .s3_storage import guess_video_content_type
 
         log.info("S3 upload %s (%d bytes) -> s3://%s/%s", filename, len(content), self._bucket, key)
         # key đã gồm prefix đầy đủ (report_s3_prefix) -> connector không thêm prefix nữa.

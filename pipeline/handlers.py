@@ -219,7 +219,7 @@ class DrawZoneHandler(Handler):
     """
 
     def process(self, ctx: PipelineContext) -> None:
-        from adapters.s3_store import S3VideoStore
+        from adapters.storage import S3VideoStore
 
         if not isinstance(ctx.video_store, S3VideoStore):
             ctx.log.info("  bỏ qua vẽ zone (video_store không phải S3, vd mock/offline)")
@@ -229,7 +229,7 @@ class DrawZoneHandler(Handler):
         except ImportError:
             ctx.log.warning("  bỏ qua vẽ zone: chưa cài opencv-python (xem requirements.txt)")
             return
-        from adapters.draw_zone import ZoneDrawer
+        from adapters.visualization import ZoneDrawer
         from report.template import image_config_url
 
         version_config = ctx.tenant.config or ctx.tenant.version

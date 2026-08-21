@@ -25,7 +25,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from adapters.draw_zone import ZoneDrawer
+from adapters.visualization import ZoneDrawer
 
 OUT_DIR = Path("reports/draw_zone_preview")
 

@@ -1,5 +1,5 @@
 """Test phân giải URL S3. Chạy: python -m tests.test_s3"""
-from adapters.s3_store import parse_s3_url
+from adapters.storage import parse_s3_url
 
 
 def test_parse_s3_uri():

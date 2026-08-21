@@ -163,8 +163,8 @@ class TenantFactory:
                     "Evidence sẽ KHÔNG publish được — thiếu: %s", ", ".join(missing)
                 )
             return None
-        from adapters.file_browser import FileBrowserFetcher
-        from adapters.s3_store import S3PublicUploader
+        from adapters.evidence import FileBrowserFetcher
+        from adapters.storage import S3PublicUploader
         from report.evidence import EvidencePublisher
 
         fetcher = FileBrowserFetcher(
@@ -372,8 +372,8 @@ class BvCFactory(TenantFactory):
                     "Evidence sẽ KHÔNG publish được — thiếu: %s", ", ".join(missing)
                 )
             return None
-        from adapters.file_browser import DownloadEvidenceHandWashingFetcher
-        from adapters.s3_store import S3PublicUploader
+        from adapters.evidence import DownloadEvidenceHandWashingFetcher
+        from adapters.storage import S3PublicUploader
         from report.evidence import EvidencePublisher
 
         fetcher = DownloadEvidenceHandWashingFetcher(

@@ -11,7 +11,7 @@ from configs.schema import RuleDef
 from interfaces.analysis_client import AnalysisClient
 from validator.models import Prediction, VideoRef
 
-from ._http_base import BaseHttpClient, norm_name
+from .base import BaseHttpClient, norm_name
 
 log = logging.getLogger("ai_testing.linfox")
 

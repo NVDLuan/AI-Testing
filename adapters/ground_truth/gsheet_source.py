@@ -16,7 +16,7 @@ from configs.schema import JobDef, RuleDef
 from interfaces.ground_truth import GroundTruthSource
 from validator.models import GroundTruthRecord
 
-from ._rows import row_to_record
+from .rows import row_to_record
 
 # Map tên cột logic -> tên cột thật trên sheet. Chỉnh cho khớp sheet của bạn.
 DEFAULT_COLUMNS = {

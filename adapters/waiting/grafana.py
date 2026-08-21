@@ -1,74 +1,12 @@
 import logging
 import re
-import threading
 import time
-from abc import ABC
 
 import requests
 
-from adapters._http_base import BaseHttpClient
+from .base import WaitingBase
 
 logger = logging.getLogger("Waiting")
-
-
-class WaitingBase(ABC):
-
-    def wait(self):
-        raise NotImplementedError()
-
-
-class WaitingKafka(WaitingBase, BaseHttpClient):
-
-    def __init__(
-            self,
-            kafka_watch_api_url: str,
-            confirm_time: int = 300,
-            poll_interval: int = 60,
-            timeout: int = 50,
-            endpoint: str = "status",
-            api_key: str = "",
-    ):
-        super().__init__(
-            base_url=kafka_watch_api_url,
-            api_key=api_key,
-            poll_interval_sec=poll_interval,
-            timeout_sec=timeout,
-        )
-        self.confirm_time = confirm_time
-        self.endpoint = endpoint
-
-    def get_status_message(self) -> dict:
-        response = self._session.get(self._url(self.endpoint), timeout=self._timeout_sec)
-        response.raise_for_status()
-        return response.json()
-
-    def wait(self) -> None:
-        logger.info(f"Waiting for result return")
-        while True:
-            res = self.get_status_message()
-            total_lag = res.get("total_lag")
-
-            if total_lag == 0:
-                logger.info("Kafka lag is 0. Confirming in %ss...", self.confirm_time)
-                time.sleep(self.confirm_time)
-
-                res_check = self.get_status_message()
-                if res_check.get("total_lag") == 0:
-                    break
-                logger.info("Kafka lag increased after confirm; continuing wait...")
-                continue
-
-            time.sleep(self._poll_interval_sec)
-
-
-class WaitingTimeout(WaitingBase):
-
-    def __init__(self, seconds: int = 0, minutes: int = 0, hours: int = 0):
-        self.timeout = seconds + 60 * minutes + 3600 * hours
-
-    def wait(self):
-        logger.info(f"Waiting for {self.timeout} seconds")
-        time.sleep(self.timeout)
 
 
 class WaitingGrafana(WaitingBase):
@@ -180,44 +118,6 @@ class WaitingGrafana(WaitingBase):
                        log_confirm):  # TODO: cần check lại phần này để validate cho từng dự án
                     return
             logger.info("AI processing.... Retry after %ss seconds", self.poll_interval)
-
-
-class WaitingParallel(WaitingBase):
-    """Chạy nhiều waiter ĐỒNG THỜI (thread), chỉ trả về khi TẤT CẢ đã xong (AND).
-
-    Dùng cho tenant cần nhiều tín hiệu xác nhận AI rảnh cùng lúc (vd Kafka lag=0 VÀ
-    Grafana log idle) mà không muốn cộng dồn thời gian chờ của từng cái — mỗi waiter
-    tự poll theo nhịp riêng, `wait()` chỉ trả về khi mọi thread đều xong.
-    1 waiter lỗi -> log rõ waiter nào lỗi, vẫn đợi các waiter còn lại xong rồi mới raise
-    (không bỏ dở các waiter khác đang chạy).
-
-    Ví dụ: `WaitingParallel([WaitingKafka(...), WaitingGrafana(...)])`.
-    """
-
-    def __init__(self, waiters: list[WaitingBase]):
-        if not waiters:
-            raise ValueError("WaitingParallel cần ít nhất 1 waiter")
-        self.waiters = waiters
-
-    def wait(self) -> None:
-        errors: list[tuple[WaitingBase, BaseException]] = []
-
-        def run(w: WaitingBase) -> None:
-            try:
-                w.wait()
-            except BaseException as exc:  # noqa: BLE001 — gom lỗi để chờ đủ waiter khác
-                errors.append((w, exc))
-
-        threads = [threading.Thread(target=run, args=(w,), daemon=True) for w in self.waiters]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        if errors:
-            for w, exc in errors:
-                logger.error("WaitingParallel: %s lỗi: %s", type(w).__name__, exc)
-            raise errors[0][1]
 
 
 if __name__ == "__main__":

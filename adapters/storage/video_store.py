@@ -38,7 +38,7 @@ def make_s3_client(
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("Cần cài boto3 để dùng S3") from exc
     if not (access_key and secret_key):
-        raise ValueError("S3 cần access key + secret key (--s3-access-key/--s3-secret-key)")
+        raise ValueError("S3 cần access key + secret key (env AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)")
     config = Config(s3={"addressing_style": addressing_style}) if addressing_style else None
     return boto3.client(
         "s3",

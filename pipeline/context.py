@@ -8,6 +8,7 @@ from adapters.waiting import WaitingBase
 from configs.loader import ConfigLoader
 from configs.schema import JobDef, RuleDef, TenantConfig
 from interfaces.analysis_client import AnalysisClient, HealthStatus
+from interfaces.evidence import EvidenceFetcher
 from interfaces.ground_truth import GroundTruthSource
 from interfaces.video_store import VideoStore
 from report.evidence import EvidencePublisher
@@ -28,16 +29,17 @@ class PipelineContext:
     video_store: VideoStore
     report_formats: list[str] = field(default_factory=lambda: ["console"])
     report_dir: str = "reports"
-    # Rỗng = validator tự chọn 1 strategy theo dữ liệu (default_strategy), không suffix
-    # tên rule. >1 phần tử = mỗi strategy 1 report riêng, report coi là 1 "rule ảo"
-    # "<rule> - <strategy.name>" (xem ValidateHandler + report/template.py).
     strategy_chain: list[ValidationStrategy] = field(default_factory=list)
     evidence_publisher: EvidencePublisher | None = None  # None = không publish evidence
+    evidence_fetcher: EvidenceFetcher | None = None  # tải clip evidence để đọc QR; None = bỏ qua
     waiting: WaitingBase = None
     # Tích luỹ qua các bước
     ground_truth: list[GroundTruthRecord] = field(default_factory=list)
     videos_by_rule: dict[str, list[VideoRef]] = field(default_factory=dict)
     missing: list[VideoRef] = field(default_factory=list)
+    # video_id -> (path video đã nhúng QR frame_id, filename gửi API); Upload ưu tiên dùng bản này
+    qr_videos: dict[str, tuple[str, str]] = field(default_factory=dict)
+    qr_tmp_dir: str = ""  # thư mục tạm chứa video QR (khi không có cache_dir), Upload xoá sau khi xong
     predictions: dict[str, Prediction] = field(default_factory=dict)
     reports: dict[str, ValidationReport] = field(default_factory=dict)  # key = strategy.name
     batch_codes: dict[str, str] = field(default_factory=dict)  # rule.code -> batch_code (trigger)

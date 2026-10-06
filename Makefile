@@ -11,10 +11,18 @@ API_URL  ?= http://103.104.122.36:8000
 # File .env dùng cho run-real; đổi để chạy nhiều bộ secret khác nhau, vd:
 #   make karter ENV_FILE=.env.karter
 ENV_FILE ?= .env
+# Tham số thêm cho main.py khi chạy run-real / run-skip-health, vd: EXTRA_ARGS="--rule USEPHONE"
+EXTRA_ARGS ?=
+# QR frame_id: nhúng QR vào video trước upload + chấm thêm layer "QR Alignment" từ evidence.
+# QR_FPS = fps video nguồn để đổi cột ExpectedResult (MM:SS) -> frame; QR_TOLERANCE = dung sai (giây).
+QR_FPS       ?= 25
+QR_TOLERANCE ?= 1
+QR_ARGS      ?= --qr-validate --qr-fps $(QR_FPS) --qr-tolerance-sec $(QR_TOLERANCE)
 
 .PHONY: help install venv list test clean \
         run run-mock run-real \
-        smoke-linfox smoke-ews smoke-bvc smoke-karter
+        smoke-linfox smoke-ews smoke-bvc smoke-karter \
+        lfvn lfvn-no-qr ews bvc karter
 
 help: ## Liệt kê các lệnh sẵn có
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | \
@@ -34,27 +42,32 @@ test: ## Chạy toàn bộ test (plain module, không dùng pytest runner)
 	$(PYTHON) -m tests.test_s3
 	$(PYTHON) -m tests.test_hand_washing
 	$(PYTHON) -m tests.test_draw_zone
+	$(PYTHON) -m tests.test_qr_video_tagger
+	$(PYTHON) -m tests.test_qr_alignment
 
 # Chạy offline: mock client + fake ground truth, không cần mạng/secret.
 run-mock: ## Chạy offline (mock + fake sheet). Vd: make run-mock TENANT=linfox_vn JOB=SMOKE
 	$(PYTHON) main.py --tenant $(TENANT) --job $(JOB) \
-		--analysis mock --source fake --formats $(FORMATS) -v
+		--analysis mock --source fake --formats $(FORMATS)
 
 # Chạy thật: Google Sheet public + API + S3, secret nạp từ $(ENV_FILE) (mặc định .env,
 # cp .env.example .env trước; đổi qua ENV_FILE=.env.<tenant> nếu có nhiều bộ secret).
 run-real: ## Chạy thật (gsheet_public + http + S3). Vd: make run-real TENANT=karter_school JOB=SMOKE ENV_FILE=.env.karter
 	$(PYTHON) main.py --tenant $(TENANT) --job $(JOB) --env-file $(ENV_FILE) \
-		--source gsheet --analysis http --formats console json html --skip-health
+		--source gsheet --analysis http --formats console json html --skip-health $(EXTRA_ARGS)
 
 run-skip-health: ## Chạy thật (gsheet_public + http + S3). Vd: make run-real TENANT=karter_school JOB=SMOKE ENV_FILE=.env.karter
 	$(PYTHON) main.py --tenant $(TENANT) --job $(JOB) --env-file $(ENV_FILE) \
-		--source gsheet --analysis http --formats console json html
+		--source gsheet --analysis http --formats console json html $(EXTRA_ARGS)
 
 # -t karter_school -j SMOKE --analysis http --source gsheet --formats console json html --skip-health
 
 run: run-real ## Alias của run-mock (mặc định an toàn, không cần secret)
 
-lfvn:
+lfvn: ## Linfox VN REGRESSION + validate QR (nhúng QR trước upload, chấm layer "QR Alignment"). Vd: make lfvn QR_FPS=30
+	$(MAKE) run-real TENANT=linfox_vn JOB=REGRESSION ENV_FILE=.env.lfvn EXTRA_ARGS="$(QR_ARGS) $(EXTRA_ARGS)"
+
+lfvn-no-qr: ## Linfox VN REGRESSION như cũ (không nhúng/validate QR)
 	$(MAKE) run-real TENANT=linfox_vn JOB=REGRESSION ENV_FILE=.env.lfvn
 
 ews:

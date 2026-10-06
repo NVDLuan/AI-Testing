@@ -5,16 +5,16 @@ Ví dụ:
     python main.py --list
 
     # Chạy offline (fake sheet + mock client) — không cần mạng/credential
-    python main.py --tenant linfox_vn --job SMOKE -v
+    python main.py --tenant linfox_vn --job SMOKE --analysis mock --source fake
 
     # Chạy 1 vài rule
     python main.py --tenant "linfox Viet Nam" --job SMOKE --rule USEPHONE --rule COLLISION
 
-    # Chạy thật: đọc Google Sheet + gọi API bên thứ 3
-    python main.py --tenant linfox_vn --job SMOKE \
-        --source gsheet --credentials sa.json \
-        --analysis http --api-url https://api.example.com --api-key $KEY \
-        --formats console json csv
+    # Chạy thật: đọc Google Sheet + gọi API bên thứ 3. API/S3/File Browser... đọc từ .env
+    # (AGENT_API, API_KEY, S3_BUCKET, AWS_*, FILE_BROWSER_*... xem .env.example)
+    python main.py --tenant linfox_vn --job SMOKE --env-file .env.lfvn \
+        --source gsheet --analysis http \
+        --formats console JSON csv
 """
 from __future__ import annotations
 
@@ -45,21 +45,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     p.add_argument("--analysis", choices=["mock", "http"], default="http")
     p.add_argument("--source", choices=["fake", "gsheet", "gsheet_public"], default="gsheet",
-                   help="fake (offline) | gsheet (riêng tư, cần --credentials) | gsheet_public (public, không cần credential)")
-    p.add_argument("--api-url", default="", help="Gốc host API, vd http://103.104.122.36:8000")
-    p.add_argument("--api-key", default="", help="X-API-Key (hoặc đặt env API_KEY)")
-    p.add_argument("--credentials", default="", help="Service account JSON (gsheet)")
+                   help="fake (offline) | gsheet (riêng tư, cần service account — env GSHEET_CREDENTIALS) | gsheet_public (public, không cần credential)")
     p.add_argument("--poll-interval", type=float, default=5.0)
     p.add_argument("--timeout", type=float, default=600.0)
     p.add_argument("--skip-health", action="store_true", help="Bỏ qua bước health check")
-    p.add_argument("--s3-bucket", default="", help="Bucket mặc định khi sheet chỉ ghi key")
-    p.add_argument("--s3-region", default="")
-    p.add_argument("--s3-prefix", default="", help="Prefix ghép vào key thuần")
-    p.add_argument("--s3-access-key", default="", help="hoặc env AWS_ACCESS_KEY_ID")
-    p.add_argument("--s3-secret-key", default="", help="hoặc env AWS_SECRET_ACCESS_KEY")
-    p.add_argument("--s3-endpoint", default="", help="endpoint S3 tuỳ chọn (MinIO...)")
-    p.add_argument("--cache-dir", default="",
-                   help="Lưu video tải về vào thư mục này + tái dùng (bỏ trống = giữ RAM, không ghi đĩa)")
+    p.add_argument("--qr-validate", action="store_true",
+                   help="Đọc QR frame_id trong clip evidence, chấm thêm layer 'QR Alignment' "
+                        "(evidence đúng thời điểm vi phạm ở cột ExpectedResult). Cần env FILE_BROWSER_URL; "
+                        "video nguồn phải đã nhúng QR frame_id (qr_video_tagger)")
+    p.add_argument("--qr-fps", type=float, default=25.0,
+                   help="FPS video nguồn để đổi ExpectedResult (MM:SS) sang frame_id")
+    p.add_argument("--qr-tolerance-sec", type=float, default=1.0,
+                   help="Dung sai (giây) khi so khoảng QR evidence với khoảng vi phạm")
     p.add_argument("--recordings-dir", default="video_raw/rainscales-static-assets/qc-automation/06. AutoHygiene",
                    help="Thư mục chứa file keypoints .txt kèm video (bv_c upload cần)")
     p.add_argument("--hw-layers", default="trigger,violation",
@@ -74,15 +71,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         "html luôn nạp schema đó vào dashboard, không cần kèm json)")
     p.add_argument("--report-dir", default="reports")
 
-    # Evidence video -> S3 -> link trong report HTML
-    p.add_argument("--file-browser-url", default="", help="Gốc API File Browser tải evidence")
-    p.add_argument("--file-browser-user", default="", help="Username File Browser (hoặc env FILE_BROWSER_USER)")
-    p.add_argument("--file-browser-password", default="", help="Password File Browser (hoặc env FILE_BROWSER_PASSWORD)")
     p.add_argument("--evidence-field", default="evidence", help="Tên field trong event chứa file_path evidence")
-    p.add_argument("--report-s3-bucket", default="", help="Bucket lưu evidence (mặc định dùng --s3-bucket)")
-    p.add_argument("--report-s3-prefix", default="reports/evidence", help="Prefix key evidence trên S3")
-    p.add_argument("--s3-public-base", default="", help="Domain/CloudFront công khai để dựng URL")
-    p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("--report-s3-bucket", default="", help="Bucket lưu evidence (mặc định dùng env S3_BUCKET)")
     p.add_argument("--log-file", action="store_true",
                    help="Ghi thêm log ra file trong thư mục logs/ (mặc định chỉ in ra stdout)")
     return p.parse_args(argv)
@@ -154,28 +144,30 @@ def main(argv: list[str] | None = None) -> int:
     opts = RunOptions(
         analysis=args.analysis,
         source=args.source or 'gsheet_public',
-        api_url=args.api_url or os.environ.get("AGENT_API", ""),
-        api_key=args.api_key or os.environ.get("API_KEY", ""),
-        credentials=args.credentials or 'configs/service-google-sheet.json',
+        api_url=os.environ.get("AGENT_API", ""),
+        api_key=os.environ.get("API_KEY", ""),
+        credentials=os.environ.get("GSHEET_CREDENTIALS", "configs/service-google-sheet.json"),
         poll_interval_sec=args.poll_interval,
         timeout_sec=args.timeout,
         skip_health=args.skip_health,
-        s3_bucket=args.s3_bucket or os.environ.get("S3_BUCKET", ""),
-        s3_region=args.s3_region or os.environ.get("AWS_DEFAULT_REGION", ""),
-        s3_prefix=args.s3_prefix or os.environ.get("S3_PREFIX", ""),
-        s3_access_key=args.s3_access_key or os.environ.get("AWS_ACCESS_KEY_ID", ""),
-        s3_secret_key=args.s3_secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-        s3_endpoint=args.s3_endpoint or os.environ.get("S3_ENDPOINT", ""),
-        cache_dir=args.cache_dir or os.environ.get("CACHE_DIR", ""),
+        s3_bucket=os.environ.get("S3_BUCKET", ""),
+        s3_region=os.environ.get("AWS_DEFAULT_REGION", ""),
+        s3_prefix=os.environ.get("S3_PREFIX", ""),
+        s3_access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+        s3_secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+        s3_endpoint=os.environ.get("S3_ENDPOINT", ""),
+        cache_dir=os.environ.get("CACHE_DIR", ""),
+        qr_validate=args.qr_validate,
+        qr_fps=args.qr_fps,
+        qr_tolerance_sec=args.qr_tolerance_sec,
         recordings_dir=args.recordings_dir,
         hw_layers=args.hw_layers,
-        file_browser_url=args.file_browser_url or os.environ.get("FILE_BROWSER_URL", ""),
-        file_browser_user=args.file_browser_user or os.environ.get("FILE_BROWSER_USER", ""),
-        file_browser_password=args.file_browser_password or os.environ.get("FILE_BROWSER_PASSWORD", ""),
+        file_browser_url=os.environ.get("FILE_BROWSER_URL", ""),
+        file_browser_user=os.environ.get("FILE_BROWSER_USER", ""),
+        file_browser_password=os.environ.get("FILE_BROWSER_PASSWORD", ""),
         evidence_field=args.evidence_field,
         report_s3_bucket=args.report_s3_bucket,  # rỗng -> factory fallback dùng chung s3_bucket
-        report_s3_prefix="reports",
-        s3_public_base=args.s3_public_base or os.environ.get("S3_PUBLIC_BASE", ""),
+        s3_public_base=os.environ.get("S3_PUBLIC_BASE", ""),
         waiting_time=os.environ.get("TIME_WAITING", ""),
         kafka_watcher_api_url=os.environ.get("KAFKA_WATCHER_API_URL", ""),
         grafana_url=os.environ.get("GRAFANA_URL", ""),

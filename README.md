@@ -11,7 +11,7 @@ HealthCheck → LoadGroundTruth → CheckMissing → Upload → UpdateRuleConfig
             → TriggerAndWait → Validate → PublishEvidence → Report
 ```
 
-Mỗi bước là một `Handler` trong `pipeline/handlers.py`. Test **theo từng rule**
+Mỗi bước là một `Handler` trong package `pipeline/handlers/` (mỗi nhóm bước 1 module). Test **theo từng rule**
 (`videos_by_rule`). **HealthCheck** chạy đầu tiên; hệ thống không khoẻ → bỏ qua các
 bước test nhưng **vẫn gen report** (file `*_ABORTED.*` ghi lý do + trạng thái health),
 exit code `2`. **UpdateRuleConfig** đẩy config camera (`POST /api/rule`) trước khi
@@ -81,29 +81,24 @@ Biến set sẵn ngoài shell ưu tiên hơn `.env`; vẫn override được qua
 python main.py --list
 
 # Offline (fake sheet + mock client) — không cần mạng/credential
-python main.py --tenant linfox_vn --job SMOKE -v
+python main.py --tenant linfox_vn --job SMOKE --analysis mock --source fake
 
 # Lọc rule (theo name hoặc code)
 python main.py -t linfox_vn -j SMOKE --rule USEPHONE --rule COLLISION
 
-# Chạy thật: Google Sheet RIÊNG TƯ + API + S3
-python main.py -t linfox_vn -j SMOKE \
-    --source gsheet --credentials sa.json \
-    --analysis http --api-url http://103.104.122.36:8000 \
-    --s3-bucket my-bucket --s3-region ap-southeast-1 \
+# Chạy thật: Google Sheet RIÊNG TƯ + API + S3. API/S3/File Browser đọc từ env file
+# (cp .env.example .env rồi điền; nhiều bộ secret thì --env-file .env.<tenant>)
+python main.py -t linfox_vn -j SMOKE --env-file .env.lfvn \
+    --source gsheet --analysis http \
     --formats console json csv
 
-# Sheet PUBLIC ("ai có link đều xem"): KHÔNG cần --credentials
+# Sheet PUBLIC ("ai có link đều xem"): KHÔNG cần service account (GSHEET_CREDENTIALS)
 python main.py -t linfox_vn -j SMOKE --source gsheet_public \
-    --analysis http --api-url http://103.104.122.36:8000 \
-    --s3-bucket my-bucket --formats console html template
+    --analysis http --formats console html template
 
-# Report HTML + nhúng link evidence (File Browser → S3 public)
+# Report HTML + nhúng link evidence (File Browser → S3 public): cần env FILE_BROWSER_*
 python main.py -t linfox_vn -j SMOKE --source gsheet_public \
-    --analysis http --api-url http://103.104.122.36:8000 \
-    --s3-bucket my-bucket \
-    --file-browser-url http://FB_HOST \
-    --formats console html json
+    --analysis http --formats console html json
 ```
 
 Report in console + ghi `reports/`. Exit code: `2` = pipeline dừng (vd health fail),
@@ -124,7 +119,7 @@ Mỗi tenant trỏ tới một "flavor" API khác nhau, chọn tự động qua 
 | linfox, EWS | `LinfoxHttpClient` | `/api/videos/check`, `/api/videos/analyze`, `/api/evidences` |
 | bv_c | `HandWashingHttpClient` | `/api/hand-washing/videos/{check,trigger,upload}`, `/api/hand-washing/events` |
 
-- **Auth**: header `X-API-Key` (CLI `--api-key` hoặc env `API_KEY`).
+- **Auth**: header `X-API-Key` (env `API_KEY`; gốc host API = env `AGENT_API`).
 - **Health**: `GET /health` (public) + `GET /api/get-overall-health-status` — **dừng** nếu
   `deepstream_is_healthy=False` HOẶC cpu/ram/gpu/disk usage > **80%**.
 - **Quy ước vi phạm**: linfox = tồn tại *evidence* cho video; bv_c = *event.violation == True*
@@ -137,7 +132,7 @@ Mỗi tenant trỏ tới một "flavor" API khác nhau, chọn tự động qua 
 `VideoStore.fetch(video) → (bytes, filename)`: `S3VideoStore` lấy video vào **RAM** rồi
 upload thẳng (không ghi đĩa). Định tuyến theo URL: thử **HTTP public** trước, nếu 401/403
 thì fallback **S3 API** với endpoint + path-style **suy từ host của URL** (MinIO/AWS đều
-được). `--cache-dir <dir>`: lưu xuống đĩa và **tái dùng nếu đã có** (bỏ qua tải lại).
+được). Env `CACHE_DIR=<dir>`: lưu xuống đĩa và **tái dùng nếu đã có** (bỏ qua tải lại).
 
 ```bash
 export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... S3_BUCKET=my-bucket
@@ -145,7 +140,7 @@ export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... S3_BUCKET=my-bucket
 ```
 
 `video_url` chấp nhận `s3://bucket/key`, URL https (virtual-hosted / path-style), hoặc
-**key thuần** (dùng `--s3-bucket` + `--s3-prefix`). Khi `--analysis mock`, store là no-op.
+**key thuần** (dùng env `S3_BUCKET` + `S3_PREFIX`). Khi `--analysis mock`, store là no-op.
 
 ### Evidence → S3 → report HTML
 

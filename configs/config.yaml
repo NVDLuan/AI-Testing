@@ -2,12 +2,12 @@ tenants:
   - name: "linfox Viet Nam"
     jobs:
       - name: 'SMOKE'
-        sheet_id: '1XkgvcHE-VovO2NTQM8z3myS_RkTJlQl-IPAP_UyR3fA'
+        sheet_id: '19BcG_L9nhhQf6DRLYaOekIOVhLaLgYxigWzTya4q6bo'
       - name: 'REGRESSION'
-        sheet_id: '1WlrPDEYvon4uJIlxdaeRRNMzVsRGkpccR2RlZa_-ovs'
+        sheet_id: '19BcG_L9nhhQf6DRLYaOekIOVhLaLgYxigWzTya4q6bo'
         dir: '01. LFVN'
-    config: 'v2.5.1.0'
-    version: '2.3.4.1'
+    config: 'v2.8.2.0'
+    version: '2.8.2.0'
     dir: 'LFVN_V2'
     load_dir: 'linfox_vn'
 

@@ -4,7 +4,6 @@ rules:
     sheet: 'USEPHONE'
     type: 'SHORT'
     time_sleep: 7
-    batch_debug: ["linfox_Viet_Nam_USEPHONE_20260706_133909"]
 
 #  - name: 'NWALKWAY'
 #    code: 'HM05'

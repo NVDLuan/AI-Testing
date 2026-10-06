@@ -95,6 +95,7 @@ class LinfoxHttpClient(BaseHttpClient, AnalysisClient):
         for v in videos:
             cam_code = self._video_camera_code(v.camera_id, rule.code, v.name)
             videos_config.setdefault(cam_code, []).append(v.name.split(".mp4")[0])
+        print(videos_config)
         resp = self._session.post(
             self._url("/api/videos/analyze"),
             json={"batch_code": batch_code, "videos_config": videos_config},

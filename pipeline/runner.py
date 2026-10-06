@@ -1,6 +1,6 @@
 """Runner mỏng: dựng context bằng factory rồi chạy chain.
 
-Toàn bộ logic từng bước nằm ở handlers.py; nơi đây chỉ lắp ráp.
+Toàn bộ logic từng bước nằm ở package handlers/; nơi đây chỉ lắp ráp.
 """
 from __future__ import annotations
 
@@ -38,6 +38,7 @@ def run_job(
         video_store=factory.create_video_store(tenant, opts),
         strategy_chain=factory.create_validation_chain(tenant, opts),
         evidence_publisher=factory.create_evidence_publisher(tenant, opts),
+        evidence_fetcher=factory.create_evidence_fetcher(tenant, opts) if opts.qr_validate else None,
         report_formats=report_formats,
         report_dir=report_dir,
         started_at=time.time(),

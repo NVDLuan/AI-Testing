@@ -42,7 +42,7 @@ def generate_report(json_path, output_path, template_path):
 
     # Dump JSON as safe string preserving Vietnamese UTF-8 characters
     print("[*] Đang biên dịch và tích hợp dữ liệu...")
-    json_data_str = json.dumps(data, ensure_ascii=False, indent=2)
+    json_data_str = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     
     # Replace placeholder in template. Template dùng "{{ TEST_REPORT_DATA_PLACEHOLDER }}"
     # (có thể kèm/không kèm khoảng trắng) -> regex chịu được cả 2 dạng.

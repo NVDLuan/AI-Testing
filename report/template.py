@@ -47,7 +47,7 @@ def image_config_url(url_raw: str, version_config: str) -> str:
     """Suy URL ảnh debug zone từ URL video raw (cùng thư mục, thêm debug_zone_<vc>).
 
     Nguồn chân lý DUY NHẤT cho quy ước đặt tên này — `DrawZoneHandler`
-    (pipeline/handlers.py) cũng gọi hàm này để biết vẽ/upload ảnh vào đúng chỗ mà
+    (pipeline/handlers/draw_zone.py) cũng gọi hàm này để biết vẽ/upload ảnh vào đúng chỗ mà
     report sẽ trỏ tới, tránh lệch giữa URL hiển thị và object thật trên S3.
     """
     if not url_raw or "/" not in url_raw:
@@ -66,6 +66,17 @@ def _fmt_duration(sec: float) -> str:
 
 def _strip_ext(name: str) -> str:
     return name.rsplit(".", 1)[0] if "." in name else name
+
+
+def _filter_cameras(config: dict[str, Any], used_cams: set[str]) -> dict[str, Any]:
+    """Lọc config camera theo camera có video. Giữ cả key `<cam>_1`/`<cam>_2` vì dashboard
+    tra fallback theo hậu tố này. Không khớp camera nào -> giữ camera đầu tiên (dashboard
+    fallback lấy key đầu)."""
+    kept = {k: v for k, v in config.items() if k in used_cams or k.rsplit("_", 1)[0] in used_cams}
+    if not kept and config:
+        first = next(iter(config))
+        kept = {first: config[first]}
+    return kept
 
 
 def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> dict[str, Any]:
@@ -117,7 +128,6 @@ def _testcase_row(gt, comp, pred, version_config: str, strategy: str = "") -> di
         "list_url_video_evidence_filebrowser": list_urls,
         "url_video_expected": "",
         "url_video_old_evidence": "",
-        "json_video_evidence": events,
         "frame_results": {"expected": []},
     }
 
@@ -166,8 +176,6 @@ def _rule_detail(
             passed += 1
         else:
             failed += 1
-    config = {cam_id: cam.raw for cam_id, cam in rule.cameras.items()}
-    api_resp = ctx.rule_api_response.get(rule.code) or {"rule_code": rule.code, "config": config}
     uploaded = sum(1 for m in ctx.missing if m.rule_id == rule.name)
 
     videos_config: dict[str, list[str]] = {}
@@ -181,6 +189,14 @@ def _rule_detail(
             "camera_code": v.camera_id,
             "camera_name": _raw_get(raw, "Camera Name", "camera_name"),
         })
+
+    # Chỉ giữ config camera có video trong lượt chạy (rule có thể khai cả trăm camera).
+    used_cams = set(videos_config)
+    config = _filter_cameras({cam_id: cam.raw for cam_id, cam in rule.cameras.items()}, used_cams)
+    api_resp = ctx.rule_api_response.get(rule.code)
+    if api_resp and isinstance(api_resp.get("config"), dict):
+        api_resp = {**api_resp, "config": _filter_cameras(api_resp["config"], used_cams)}
+    api_resp = api_resp or {"rule_code": rule.code, "config": config}
 
     now = time.time()
     # batch_code phải UNIQUE giữa các layer của cùng 1 rule thật (key trong details{}) ->
@@ -286,12 +302,49 @@ def build_template(ctx: "PipelineContext", stamp: str) -> dict[str, Any]:
     }
 
 
+def _dump_compact(data: Any, path: str) -> None:
+    # Không indent: cam_zones (mảng toạ độ lồng nhau) indent ra mỗi số 1 dòng -> phình ~4.5x.
+    # Cần đọc bằng mắt thì format lại trong IDE.
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+
+
 def write_template(ctx: "PipelineContext", output_dir: str = "reports", stamp: str = "") -> str:
     """Ghi file test_results_<stamp>.json theo template. Trả về đường dẫn."""
     stamp = stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, f"test_results_{stamp}.json")
-    data = build_template(ctx, stamp)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _dump_compact(build_template(ctx, stamp), path)
+    return path
+
+
+def write_evidence_raw(ctx: "PipelineContext", output_dir: str = "reports", stamp: str = "") -> str:
+    """Ghi payload evidence thô từ API (`Prediction.events`) ra `evidence_raw_<stamp>.json`
+    để debug — tách khỏi test_results_*.json vì dashboard không dùng mà chiếm nhiều dung lượng.
+
+    Cấu trúc: `{version_run, evidences{rule_code: {video_name: [event...]}}}` — mỗi video
+    ghi 1 lần (không nhân theo layer). Không có evidence nào -> không ghi, trả "".
+    Tên file KHÔNG bắt đầu bằng `test_results_` để `generate_report.find_latest_json` không bắt nhầm.
+    """
+    stamp = stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    evidences: dict[str, dict[str, list]] = {}
+    for rule in ctx.rules:
+        for v in ctx.videos_by_rule.get(rule.code, []):
+            pred = ctx.predictions.get(v.video_id)
+            if pred and pred.events:
+                evidences.setdefault(rule.code, {})[v.name] = list(pred.events)
+    if not evidences:
+        return ""
+    os.makedirs(output_dir, exist_ok=True)
+    path = os.path.join(output_dir, f"evidence_raw_{stamp}.json")
+    tenant = ctx.tenant
+    _dump_compact({
+        "version_run": {
+            "tenant": tenant.name,
+            "job": ctx.job.name,
+            "version_ai": tenant.version,
+            "version_config": tenant.config or tenant.version,
+        },
+        "evidences": evidences,
+    }, path)
     return path

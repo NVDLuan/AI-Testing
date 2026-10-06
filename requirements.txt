@@ -8,3 +8,7 @@ boto3>=1.34
 mediapipe==0.10.7
 opencv-python==4.12.0.88
 numpy==2.2.6
+# QR frame_id (qr_video_tagger/): nhúng/đọc QR số thứ tự frame trong video
+qrcode>=8.2
+pyzbar>=0.1.9
+pillow>=10.0
